@@ -1,0 +1,39 @@
+CannulaExample1:
+    NumberOfTubes: 3
+    EndEffectorType: 'gripper'
+    Tube1:
+        TotalLength: 415e-3
+        OuterDiameter: 1.168e-3
+        InnerDiameter: 0.762e-3
+        YoungsModulus: 50e9
+        PoissonsRatio: 0.33
+        StraightLength: 370e-3
+        CurvatureX: 8.3
+        CurvatureY: 0.0
+        CurvatureZ: 0.0
+        AlphaHome: 0.0
+        BetaHome: -275e-3
+    Tube2:
+        TotalLength: 312e-3
+        OuterDiameter: 1.684e-3
+        InnerDiameter: 1.346e-3
+        YoungsModulus: 50e9
+        PoissonsRatio: 0.33
+        StraightLength: 240e-3
+        CurvatureX: 4.8
+        CurvatureY: 0.0
+        CurvatureZ: 0.0
+        AlphaHome: 0.0
+        BetaHome: -212e-3
+    Tube3:
+        TotalLength: 168e-3
+        OuterDiameter: 2.324e-3
+        InnerDiameter: 1.8668e-3
+        YoungsModulus: 50e9
+        PoissonsRatio: 0.33
+        StraightLength: 95e-3
+        CurvatureX: 1.7
+        CurvatureY: 0.0
+        CurvatureZ: 0.0
+        AlphaHome: 0.0
+        BetaHome: -118e-3

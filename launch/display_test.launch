@@ -1,0 +1,9 @@
+<launch>
+
+<node pkg="rviz" type="rviz" name="rviz" required="true"/>
+
+<node pkg="endonasal_teleop" type="kinematics_test" name="kinematics_test"/>
+
+<node pkg="endonasal_teleop" type="kinematics" name="kinematics"/>
+
+</launch>

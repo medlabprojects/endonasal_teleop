@@ -1,0 +1,5 @@
+<KinematicOptions>
+    <InitialIVPStep>10.0e-3</InitialIVPStep>
+    <MinimumIVPStep>0.1e-3</MinimumIVPStep>
+    <MaximumShootingIterations>50</MaximumShootingIterations>
+</KinematicOptions>

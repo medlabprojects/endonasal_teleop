@@ -1,0 +1,174 @@
+<HardwareDescription>
+
+<HapticInterface Name="Phantom 1"/>
+<HapticInterface Name="Phantom 2"/>
+
+<ActiveCannulaRobot NumberOfTubes="3">
+    <CannulaName>grip_cannula</CannulaName>
+    <FrontPlateThickness>120e-3</FrontPlateThickness>
+    <BackPlateArcLength>-400e-3</BackPlateArcLength>
+    <TubeCarrier Number="1">
+        <ThicknessPlus>0.002</ThicknessPlus>
+        <ThicknessMinus>0.048</ThicknessMinus>
+        <HomePosition>-295e-3</HomePosition>
+        <RotationGearRatio>-12900.91245</RotationGearRatio>
+        <TranslationGearRatio>8346456.693</TranslationGearRatio>
+    </TubeCarrier>
+    <TubeCarrier Number="2">
+        <ThicknessPlus>0.002</ThicknessPlus>
+        <ThicknessMinus>0.048</ThicknessMinus>
+        <HomePosition>-215e-3</HomePosition>
+        <RotationGearRatio>-12900.91245</RotationGearRatio>
+        <TranslationGearRatio>8346456.693</TranslationGearRatio>
+    </TubeCarrier>
+    <TubeCarrier Number="3">
+        <ThicknessPlus>0.0002</ThicknessPlus>
+        <ThicknessMinus>0.048</ThicknessMinus>
+        <HomePosition>-145e-3</HomePosition>
+        <RotationGearRatio>-12900.91245</RotationGearRatio>
+        <TranslationGearRatio>8346456.693</TranslationGearRatio>
+    </TubeCarrier>
+    <ControllerConnection Type="Rotation" TubeNumber="1">
+        <ControllerName>Galil 1</ControllerName>
+        <AxisNumber>4</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Translation" TubeNumber="1">
+        <ControllerName>Galil 1</ControllerName>
+        <AxisNumber>7</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Rotation" TubeNumber="2">
+        <ControllerName>Galil 1</ControllerName>
+        <AxisNumber>3</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Translation" TubeNumber="2">
+        <ControllerName>Galil 1</ControllerName>
+        <AxisNumber>6</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Rotation" TubeNumber="3">
+        <ControllerName>Galil 1</ControllerName>
+        <AxisNumber>2</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Translation" TubeNumber="3">
+        <ControllerName>Galil 1</ControllerName>
+        <AxisNumber>5</AxisNumber>
+    </ControllerConnection>
+</ActiveCannulaRobot>
+
+
+<ActiveCannulaRobot NumberOfTubes="3">
+    <CannulaName>curette_cannula</CannulaName>
+    <FrontPlateThickness>100e-3</FrontPlateThickness>
+    <BackPlateArcLength>-400e-3</BackPlateArcLength>
+    <TubeCarrier Number="1">
+        <ThicknessPlus>0.002</ThicknessPlus>
+        <ThicknessMinus>0.048</ThicknessMinus>
+        <HomePosition>-280e-3</HomePosition>
+        <RotationGearRatio>-12900.91245</RotationGearRatio>
+        <TranslationGearRatio>8346456.693</TranslationGearRatio>
+    </TubeCarrier>
+    <TubeCarrier Number="2">
+        <ThicknessPlus>0.002</ThicknessPlus>
+        <ThicknessMinus>0.048</ThicknessMinus>
+        <HomePosition>-200e-3</HomePosition>
+        <RotationGearRatio>-12900.91245</RotationGearRatio>
+        <TranslationGearRatio>8346456.693</TranslationGearRatio>
+    </TubeCarrier>
+    <TubeCarrier Number="3">
+        <ThicknessPlus>0.0002</ThicknessPlus>
+        <ThicknessMinus>0.048</ThicknessMinus>
+        <HomePosition>-125e-3</HomePosition>
+        <RotationGearRatio>-12900.91245</RotationGearRatio>
+        <TranslationGearRatio>8346456.693</TranslationGearRatio>
+    </TubeCarrier>
+    <ControllerConnection Type="Rotation" TubeNumber="1">
+        <ControllerName>Galil 2</ControllerName>
+        <AxisNumber>4</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Translation" TubeNumber="1">
+        <ControllerName>Galil 2</ControllerName>
+        <AxisNumber>7</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Rotation" TubeNumber="2">
+        <ControllerName>Galil 2</ControllerName>
+        <AxisNumber>3</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Translation" TubeNumber="2">
+        <ControllerName>Galil 2</ControllerName>
+        <AxisNumber>6</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Rotation" TubeNumber="3">
+        <ControllerName>Galil 2</ControllerName>
+        <AxisNumber>2</AxisNumber>
+    </ControllerConnection>
+    <ControllerConnection Type="Translation" TubeNumber="3">
+        <ControllerName>Galil 2</ControllerName>
+        <AxisNumber>5</AxisNumber>
+    </ControllerConnection>
+</ActiveCannulaRobot>
+
+<Controller Type="GalilDMC4080Controller" TcpAddress="169.254.198.219" Name="Galil 2">
+    <Axis Name="C">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="D">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="E">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="F">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="G">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="H">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+</Controller>
+
+<Controller Type="GalilDMC4080Controller" TcpAddress="169.254.2.50" Name="Galil 1">
+    <Axis Name="C">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="D">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="E">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="F">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="G">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+    <Axis Name="H">
+        <KP>40</KP>
+        <KD>800</KD>
+        <KI>0</KI>
+    </Axis>
+</Controller>
+</HardwareDescription>
