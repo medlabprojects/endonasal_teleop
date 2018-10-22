@@ -559,10 +559,13 @@ int main(int argc, char *argv[])
 
     // Cannula starting configuration (home position):
     Configuration3 qstart;
-    qstart.PsiL = Eigen::Vector3d::Zero();
-    qstart.Beta << -160e-3, -127.2e-3, -86.4e-3;
-    qstart.Ftip = Eigen::Vector3d::Zero();
+    //qstart.PsiL = Eigen::Vector3d::Zero();
+    qstart.PsiL << M_PI, M_PI, M_PI;
+    qstart.Beta << -160.9e-3, -127.2e-3, -86.4e-3;
+    qstart.Ftip = Eigen::Vector3d::Zero();	
     qstart.Ttip = Eigen::Vector3d::Zero();
+    Eigen::Vector3d qstartAlpha;
+    qstartAlpha << M_PI, M_PI, M_PI;
 
     q = qstart;
 
