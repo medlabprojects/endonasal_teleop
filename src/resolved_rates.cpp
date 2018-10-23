@@ -966,6 +966,9 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
             Rtip = quat2rotm(qtip);
             robotTipFrame = assembleTransformation(Rtip,ptip);
 
+		
+            if(buttonState==1) //must clutch in button for any motions to happen
+            {
 		// send commands to motorboards
 		scale_rot = 16498.78; 		// counts/rad
 		scale_trans = 6802.16*1e3;		// counts/m
@@ -993,10 +996,9 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
 
 		pubEncoderCommand1.publish(enc1); 
 		pubEncoderCommand2.publish(enc2);
+                
 
-            if(buttonState==1) //must clutch in button for any motions to happen
-            {
-                //std::cout << "J(beta) = " << std::endl << J << std::endl << std::endl;
+		//std::cout << "J(beta) = " << std::endl << J << std::endl << std::endl;
                 std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
                 //std::cout << "qtip = " << std::endl << qtip.transpose() << std::endl << std::endl;
 
