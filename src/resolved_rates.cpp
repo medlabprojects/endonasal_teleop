@@ -322,6 +322,35 @@ return delta_qx_sat;
 
 }
 
+Eigen::Matrix3d hat3(Eigen::Vector3d x)
+{
+    Eigen::Matrix3d xhat;
+    xhat.fill(0);
+    xhat(0,1) = -x(2);
+    xhat(0,2) = x(1);
+    xhat(1,0) = x(2);
+    xhat(1,2) = -x(0);
+    xhat(2,0) = -x(1);
+    xhat(2,1) = x(0);
+    return xhat;
+}
+
+Eigen::Matrix<double,6,6> Adjoint(Eigen::Matrix<double,4,4> T)
+{
+
+Eigen::Matrix3d phat = hat3(T.topRightCorner(3,1));
+Eigen::Matrix3d R = T.topLeftCorner(3,3);
+
+Eigen::Matrix<double,6,6> AdjT;
+AdjT.fill(0);
+AdjT.topLeftCorner(3,3) = R;
+AdjT.topRightCorner(3,3) = phat*R;
+AdjT.bottomRightCorner(3,3) = R;
+
+return AdjT;
+
+}
+
 Vector6d transformBetaToX(Vector6d qbeta, Eigen::Vector3d L)
 {
     Vector6d qx;
@@ -687,10 +716,10 @@ void omniCallback(const geometry_msgs::Pose &msg)
 {
     tempMsg = msg;
 
-    Matrix4d OmniReg = Matrix4d::Identity();
+    Matrix4d OmniReg1 = Matrix4d::Identity();
     Eigen::MatrixXd rotationY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
-    Mtransform::SetRotation(OmniReg,rotationY);
-    Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
+    Mtransform::SetRotation(OmniReg1,rotationY);
+    Matrix4d OmniReg1Inv = Mtransform::Inverse(OmniReg1);
 
     Eigen::Vector4d qOmni;
     qOmni << tempMsg.orientation.w, tempMsg.orientation.x, tempMsg.orientation.y, tempMsg.orientation.z;
@@ -704,7 +733,11 @@ void omniCallback(const geometry_msgs::Pose &msg)
     omniPose.topRightCorner(3,1) = pOmni;
     omniPose(3,3) = 1.0;
 
-    omniPose = OmniRegInv*omniPose*OmniReg;
+//    omniPose = OmniReg1Inv*omniPose*OmniReg1;
+//    omniPose = OmniReg1*omniPose;
+    omniPose = omniPose*OmniReg1;
+//    omniPose = OmniReg1*omniPose*OmniReg1Inv;
+
 }
 
 int buttonState = 0;
@@ -727,6 +760,21 @@ void zero_force()
     omniForce.z = 0.0;
 }
 
+void setDampingForce(Vector3d V)
+{
+
+	//if (V.norm() == 0)
+	//{
+	//	omniForce.x = 0.0; omniForce.y = 0.0; omniForce.z = 0.0;
+	//	std::cout << "no velocity spec'd" << std::endl << std::endl;
+	//}
+    omniForce.x = V(0)*1000.0*(-1.0)*(1.0/20.0);
+	omniForce.y = V(1)*1000.0*(-1.0)*(1.0/20.0);
+	omniForce.z = V(2)*1000.0*(-1.0)*(1.0/20.0);
+
+	std::cout << " omniForce: " << std::endl << omniForce << std::endl << std::endl;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -747,13 +795,13 @@ int main(int argc, char *argv[])
     
 
     // motion tracking weighting matrix (task space):
-    Matrix3d W_tracking = Eigen::Matrix<double,3,3>::Zero();
+    Eigen::Matrix<double,6,6> W_tracking = Eigen::Matrix<double,6,6>::Zero();
     W_tracking(0,0) = lambda_tracking*weight_master_scale;
     W_tracking(1,1) = lambda_tracking*weight_master_scale;
     W_tracking(2,2) = lambda_tracking*weight_master_scale;
-    //W_tracking(3,3) = 0.1*lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-    //W_tracking(4,4) = 0.1*lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-    //W_tracking(5,5) = lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+    W_tracking(3,3) = 0.1*lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+    W_tracking(4,4) = 0.1*lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+    W_tracking(5,5) = lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
 
     std::cout << "W_tracking = " << std::endl << W_tracking << std::endl << std::endl;
 
@@ -792,7 +840,7 @@ int main(int argc, char *argv[])
     Matrix4d robotTipFrame; //from tip pose
     Matrix6d J;
     Matrix4d robotDesFrameDelta;
-    Vector3d robotDesTwist;
+    Vector6d robotDesTwist;
     Eigen::Vector3d L;
 
     // OMNI POSE VARIABLES
@@ -802,12 +850,10 @@ int main(int argc, char *argv[])
     Matrix4d omniDelta_cannulaCoords; //change in Omni position between timesteps in inertial frame
 
     // OMNI REGISTRATION (constant)
-    /*
     Matrix4d OmniReg = Matrix4d::Identity();
     Eigen::MatrixXd rotationY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
     Mtransform::SetRotation(OmniReg,rotationY);
     Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
-    */
 
     // MESSAGES TO BE SENT
     endonasal_teleop::config3 q_msg;
@@ -895,7 +941,7 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
 ********************************************************************************/
 
     //qstart.PsiL = Eigen::Vector3d::Zero();
-    qstart.PsiL << M_PI, M_PI, M_PI;
+    qstart.PsiL << 0, 0, 0;
     qstart.Beta << -160.9e-3, -127.2e-3, -86.4e-3;
     qstart.Ftip = Eigen::Vector3d::Zero();	
     qstart.Ttip = Eigen::Vector3d::Zero();
@@ -997,12 +1043,8 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
 		pubEncoderCommand1.publish(enc1); 
 		pubEncoderCommand2.publish(enc2);
                 
-
-		//std::cout << "J(beta) = " << std::endl << J << std::endl << std::endl;
-                std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
-                //std::cout << "qtip = " << std::endl << qtip.transpose() << std::endl << std::endl;
-
-		//Matrix4d ROmniFrameAtClutch; // Rotation of the Omni frame tip at clutch in
+		std::cout << "curOmni = " << curOmni << std::endl << std::endl;
+                //std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
 
                 //furthermore, if this is the first time step of clutch in, we need to save the robot pose & the omni pose
                 if(justClutched==true)
@@ -1012,45 +1054,87 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
 		    prevOmni = omniPose;
 		    //ROmniFrameAtClutch = assembleTransformation(omniFrameAtClutch.block(0,0,3,3),zerovec);
                     Tregs = assembleTransformation(Rtip.transpose(),zerovec);
-                    std::cout << "robotTipFrameAtClutch = " << std::endl << robotTipFrameAtClutch << std::endl << std::endl;
+                    //std::cout << "robotTipFrameAtClutch = " << std::endl << robotTipFrameAtClutch << std::endl << std::endl;
                     std::cout << "omniFrameAtClutch = " << std::endl << omniFrameAtClutch << std::endl << std::endl;
                     justClutched = false; // next time, skip this step
                 }
 
-                // find change in omni position and orientation from the clutch pose
+                // find change in omni position and orientation from the previous omni pose
                 // omniDelta_omniCoords = Mtransform::Inverse(ROmniFrameAtClutch.transpose())*(Mtransform::Inverse(omniFrameAtClutch)*curOmni)*ROmniFrameAtClutch.transpose();
 		// omniDelta_omniCoords = Mtransform::Inverse(omniFrameAtClutch)*curOmni;
 		// std::cout << "omniDelta_omniCoords = " << std::endl << omniDelta_omniCoords << std::endl << std::endl;
-		Eigen::Vector3d pdelta_omni = curOmni.block(0,3,3,1) - prevOmni.block(0,3,3,1);
+		//Eigen::Vector3d pdelta_omni = curOmni.block(0,3,3,1) - prevOmni.block(0,3,3,1);
+		Matrix4d omniDelta_omniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
 
                 // convert position units mm -> m
                 //omniDelta_cannulaCoords.block(0,3,3,1) = omniDelta_cannulaCoords.block(0,3,3,1)/1000.0;
-		pdelta_omni = pdelta_omni/1000.0;
+		//pdelta_omni = pdelta_omni/1000.0;
+		omniDelta_omniPenCoords.block(0,3,3,1) = omniDelta_omniPenCoords.block(0,3,3,1)/1000.0;
+
+		// convert to be expressed in the base coordinate frames
+		Matrix4d RPrevOmni = assembleTransformation(prevOmni.block(0,0,3,3),zerovec);
+		Matrix4d omniDelta_omniBaseCoords = OmniReg*(Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose())*OmniRegInv; // omni base is same frame definition as cannula base
+//		omniDelta_omniBaseCoords = OmniReg*omniDelta_omniBaseCoords;
+
+		// WE'LL USE OMNI BASE COORDS FOR LINEAR VELOCITY AND PEN COORDS FOR ANGULAR VELOCITY
+
+		Vector6d omniTwist_omniPenCoords;
+		omniTwist_omniPenCoords.fill(0);
+		omniTwist_omniPenCoords(0) = omniDelta_omniPenCoords(0,3);	//v_x
+		omniTwist_omniPenCoords(1) = omniDelta_omniPenCoords(1,3);	//v_y
+		omniTwist_omniPenCoords(2) = omniDelta_omniPenCoords(2,3);	//v_z
+		omniTwist_omniPenCoords(3) = omniDelta_omniPenCoords(2,1);	//w_x
+		omniTwist_omniPenCoords(4) = omniDelta_omniPenCoords(0,2);	//w_y
+		omniTwist_omniPenCoords(5) = omniDelta_omniPenCoords(1,0);	//w_z
+
+		Vector6d omniTwist_omniBaseCoords;
+		omniTwist_omniBaseCoords.fill(0);
+		omniTwist_omniBaseCoords(0) = omniDelta_omniBaseCoords(0,3);	//v_x
+		omniTwist_omniBaseCoords(1) = omniDelta_omniBaseCoords(1,3);	//v_y
+		omniTwist_omniBaseCoords(2) = omniDelta_omniBaseCoords(2,3);	//v_z
+		omniTwist_omniBaseCoords(3) = omniDelta_omniBaseCoords(2,1);	//w_x
+		omniTwist_omniBaseCoords(4) = omniDelta_omniBaseCoords(0,2);	//w_y
+		omniTwist_omniBaseCoords(5) = omniDelta_omniBaseCoords(1,0);	//w_z
+
+		std::cout << "omniTwist_omniPenCoords = " << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
+		std::cout << "omniTwist_omniBaseCoords = " << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
+		
+		//TODO: add this back for haptic damping (Max 10/31/18)
+		Eigen::Vector3d V = omniTwist_omniBaseCoords.head(3);  // is this the right velocity vector? we want n_hat (unit direction vector) & vel_magnitude
+		std::cout << V.transpose() << std::endl << std::endl;
+		setDampingForce(V);
+		
 
                 // scale position through scaling ratio
                 //omniDelta_cannulaCoords.block(0,3,3,1) = scale_factor*omniDelta_cannulaCoords.block(0,3,3,1);
-		pdelta_omni = scale_factor*pdelta_omni;
+		//pdelta_omni = scale_factor*pdelta_omni;
+		
 
-		// Compute desired velocity based on tip position error
-		Eigen::Vector3d xdot_des;
-		if (pdelta_omni.norm() > 1e-8)
-			{
+		// Compute desired velocity based on tip position change
+		//Eigen::Vector3d xdot_des;
+		//if (pdelta_omni.norm() > 1e-8)
+		//	{
 
-				double vMax = 0.03;
-				double vMin = 1e-6;
-				double eMax = 0.02;
-				double eMin = 1e-6;
-				double convergeRadius = 1e-8;
-				double vMag = getVmag(pdelta_omni, vMax, vMin, eMax, eMin, convergeRadius);
-				xdot_des = vMag*pdelta_omni / pdelta_omni.norm();
-			}
-			else
-			{
-				xdot_des = pdelta_omni;
-			}
+		//		double vMax = 0.03;
+		//		double vMin = 1e-6;
+		//		double eMax = 0.02;
+		//		double eMin = 1e-6;
+		//		double convergeRadius = 1e-8;
+		//		double vMag = getVmag(pdelta_omni, vMax, vMin, eMax, eMin, convergeRadius);
+		//		xdot_des = vMag*pdelta_omni / pdelta_omni.norm();
+		//	}
+		//	else
+		//	{
+		//		xdot_des = pdelta_omni;
+		//	}
 
-		robotDesTwist = xdot_des;
-		std::cout << "robotDesTwist = " << robotDesTwist << std::endl << std::endl;
+//		robotDesTwist.head(3) = omniTwist_omniBaseCoords.head(3);
+//		robotDesTwist.tail(3) = omniTwist_omniPenCoords.tail(3);
+		robotDesTwist = omniTwist_omniBaseCoords;
+		robotDesTwist = 0.1*robotDesTwist;
+		std::cout << "robotDesTwist = " << robotDesTwist.transpose() << std::endl << std::endl;
+
+		//std::cout << "robotDesTwist = " << robotDesTwist << std::endl << std::endl;
 /*
                 // scale orientation through scaling ratio (if it is large enough)
                 trace = omniDelta_cannulaCoords(0,0)+omniDelta_cannulaCoords(1,1)+omniDelta_cannulaCoords(2,2);
@@ -1139,10 +1223,15 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
 		RR.bottomRightCorner<3,3>() = Rtip;
 		Eigen::Matrix<double,6,6> Jh = RR*J;
 
+		// Now take body Jacobian for orientation + hybrid Jacobian for position to make mixed Jacobian		
+		//Eigen::Matrix<double,6,6> Jmix;
+		//Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);
+		//Jmix.block(3,0,3,6) = J.block(3,0,3,6);
+
                 // Transformation from qbeta to qx:
                 Eigen::Matrix<double,6,6> Jx = Jh*dqbeta_dqx;
-		Eigen::Matrix<double,3,6> Jp = Jx.block<3,6>(0,0);
-                //std::cout << "Jx = " << std::endl << Jx << std::endl << std::endl;
+		//Eigen::Matrix<double,3,6> Jp = Jx.block<3,6>(0,0);
+               	//std::cout << "Jx = " << std::endl << Jx << std::endl << std::endl;
                 Vector6d qx_vec = transformBetaToX(q_vec,L);
 
                 // Joint limit avoidance weighting matrix
@@ -1151,16 +1240,16 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
                 dhPrev = Wout.dh; // and save this dh value for next time
 
                 // Resolved rates update
-                Eigen::Matrix<double,6,6> A = Jp.transpose()*W_tracking*Jp + W_damping + W_jointlim;
-                Vector6d b = Jp.transpose()*W_tracking*robotDesTwist;
+                Eigen::Matrix<double,6,6> A = Jx.transpose()*W_tracking*Jx + W_damping + W_jointlim;
+                Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
                 delta_qx = A.partialPivLu().solve(b);
 		//std::cout <<"delta_qx: "<< delta_qx.transpose() << std::endl << std::endl;
 		
-		std::cout << "J'*W*J = " << std::endl << Jp.transpose()*W_tracking*Jp << std::endl << std::endl;
-		std::cout << "W_jointlim = " << std::endl << W_jointlim << std::endl << std::endl;
-		std::cout << "A = " << std::endl << A << std::endl << std::endl;
-		std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
-		std::cout << "delta_qx = " << std::endl << delta_qx.transpose() << std::endl << std::endl;
+		//std::cout << "J'*W*J = " << std::endl << Jp.transpose()*W_tracking*Jp << std::endl << std::endl;
+		//std::cout << "W_jointlim = " << std::endl << W_jointlim << std::endl << std::endl;
+		//std::cout << "A = " << std::endl << A << std::endl << std::endl;
+		//std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
+		//std::cout << "delta_qx = " << std::endl << delta_qx.transpose() << std::endl << std::endl;
 
 		delta_qx = saturateJointVelocities(delta_qx, rosLoopRate); 	// Limit joint velocities
                 qx_vec = qx_vec + delta_qx;					// Update to new position
@@ -1191,6 +1280,7 @@ std::cout << "EEtype is now: " << EEtype << std::endl;
                     q_msg.joint_q[h+6] = 0;
                 }
                 rrUpdateStatusMsg.data = true;
+				zero_force();
             }
 
             // publish

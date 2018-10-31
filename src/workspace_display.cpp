@@ -104,7 +104,8 @@ int main(int argc, char** argv)
     ros::Publisher seg_pub = n.advertise<visualization_msgs::Marker>("segment_visual",1000);
     uint32_t shape = visualization_msgs::Marker::CYLINDER;
 
-    ros::Publisher omni_pub = n.advertise<std_msgs::Int32>("Omniforce", 1000);
+    // TODO: if we want to publish to omniforce, we need a geometry_msg::Vector3 (not sure why we would be publishing from here..)
+    //ros::Publisher omni_pub = n.advertise<std_msgs::Int32>("Omniforce", 1000);
 
     // define subscriber
     ros::Subscriber sub = n.subscribe("needle_position", 1000, Callback);
@@ -312,7 +313,7 @@ int main(int argc, char** argv)
         // send force feedback back to windows & omni
         if (z_value < threshold) { force_flag.data = 0; }
         else { force_flag.data = 0; }
-        omni_pub.publish(force_flag);
+        //omni_pub.publish(force_flag);
 
 
         ros::spinOnce();
