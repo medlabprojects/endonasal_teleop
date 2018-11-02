@@ -97,6 +97,8 @@ bool startingConfigPublished;
 
 Eigen::Vector3d ptip;
 Eigen::Vector4d qtip;
+Eigen::Vector3d ptip2;
+Eigen::Vector4d qtip2;
 Matrix6d J;
 Matrix6d Jbody;
 
@@ -119,11 +121,13 @@ bool startingKin(endonasal_teleop::getStartingKin::Request &req, endonasal_teleo
     for (int i = 0; i <3; i++)
     {
         res.p[i] = ptip(i);
+        res.p2[i] = ptip2(i);
     }
 
     for (int i = 0; i <4; i++)
     {
         res.q[i] = qtip(i);
+        res.q2[i] = qtip2(i);
     }
 
     return true;
@@ -559,13 +563,14 @@ int main(int argc, char *argv[])
 
     // Cannula starting configuration (home position):
     Configuration3 qstart;
-    //qstart.PsiL = Eigen::Vector3d::Zero();
-    qstart.PsiL << M_PI, M_PI, M_PI;
+    qstart.PsiL = Eigen::Vector3d::Zero();
+    //qstart.PsiL << M_PI, M_PI, M_PI;
     qstart.Beta << -160.9e-3, -127.2e-3, -86.4e-3;
     qstart.Ftip = Eigen::Vector3d::Zero();	
     qstart.Ttip = Eigen::Vector3d::Zero();
     Eigen::Vector3d qstartAlpha;
-    qstartAlpha << M_PI, M_PI, M_PI;
+    //qstartAlpha << M_PI, M_PI, M_PI;
+    qstartAlpha << 0.0, 0.0, 0.0;
 
     q = qstart;
 
@@ -593,6 +598,7 @@ int main(int argc, char *argv[])
 
             // Pick out the body Jacobian relating actuation to tip position
             J = CTR::GetTipJacobianForTube1(ret1.y_final);
+
 
             // Transform it into the hybrid Jacobian:
 //            Eigen::Matrix3d Rtip = quat2rotm(ret1.qTip);
@@ -670,6 +676,9 @@ int main(int argc, char *argv[])
             ptip << posedata_out(0,lastPos), posedata_out(1,lastPos), posedata_out(2,lastPos);
             qtip << posedata_out(3,lastPos), posedata_out(4,lastPos), posedata_out(5,lastPos), posedata_out(6,lastPos);
 
+            ptip2 = ret1.pTip;
+            qtip2 = ret1.qTip;
+
             // tip pose message for resolved rates
             kin_msg.p[0] = ptip[0];
             kin_msg.p[1] = ptip[1];
@@ -678,9 +687,20 @@ int main(int argc, char *argv[])
             kin_msg.q[1] = qtip[1];
             kin_msg.q[2] = qtip[2];
             kin_msg.q[3] = qtip[3];
+            kin_msg.p2[0] = ptip2[0];
+            kin_msg.p2[1] = ptip2[1];
+            kin_msg.p2[2] = ptip2[2];
+            kin_msg.q2[0] = qtip2[0];
+            kin_msg.q2[1] = qtip2[1];
+            kin_msg.q2[2] = qtip2[2];
+            kin_msg.q2[3] = qtip2[3];
 	    kin_msg.alpha[0] = base_rotations[0];
 	    kin_msg.alpha[1] = base_rotations[1];
 	    kin_msg.alpha[2] = base_rotations[2];
+            kin_msg.psiBeta[0] = ret1.y_final.Psi[0];
+            kin_msg.psiBeta[1] = ret1.y_final.Psi[1];
+            kin_msg.psiBeta[2] = ret1.y_final.Psi[2];
+
             for(int i=0; i<6; i++)
             {
                 kin_msg.J1[i]=J(0,i);

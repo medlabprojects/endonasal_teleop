@@ -19,6 +19,7 @@ revised:  6/14/2018
 #include "Kinematics.h"
 #include "BasicFunctions.h"
 #include "Tube.h"
+#include "Utility.h"
 
 // Eigen headers
 #include <Eigen/Dense>
@@ -111,7 +112,10 @@ double scale_trans_outer; // counts/m
 
 Eigen::Vector3d ptipcur; // use for continually updated message value
 Eigen::Vector4d qtipcur;
+Eigen::Vector3d ptipcur2; // use for continually updated message value
+Eigen::Vector4d qtipcur2;
 Eigen::Vector3d alphacur;
+Eigen::Vector3d psiBeta;
 Matrix6d Jcur;
 bool new_kin_msg = 0;
 double rosLoopRate = 100.0;
@@ -685,10 +689,25 @@ void kinCallback(const endonasal_teleop::kinout kinmsg)
   qtipcur[2] = tmpkin.q[2];
   qtipcur[3] = tmpkin.q[3];
 
+  // pull out position
+  ptipcur2[0] = tmpkin.p2[0];
+  ptipcur2[1] = tmpkin.p2[1];
+  ptipcur2[2] = tmpkin.p2[2];
+
+  // pull out orientation (quaternion)
+  qtipcur2[0] = tmpkin.q2[0];
+  qtipcur2[1] = tmpkin.q2[1];
+  qtipcur2[2] = tmpkin.q2[2];
+  qtipcur2[3] = tmpkin.q2[3];
+
   // pull out the base angles of the tubes (alpha in rad)
   alphacur[0] = tmpkin.alpha[0];
   alphacur[1] = tmpkin.alpha[1];
   alphacur[2] = tmpkin.alpha[2];
+  psiBeta[0] = tmpkin.psiBeta[0];
+  psiBeta[1] = tmpkin.psiBeta[1];
+  psiBeta[2] = tmpkin.psiBeta[2];
+
 
   // pull out Jacobian
   for(int i = 0; i<6; i++)
@@ -700,6 +719,7 @@ void kinCallback(const endonasal_teleop::kinout kinmsg)
     Jcur(4,i)=tmpkin.J5[i];
     Jcur(5,i)=tmpkin.J6[i];
   }
+
 }
 
 std_msgs::Bool tmpFKM;
@@ -734,7 +754,8 @@ void omniCallback(const geometry_msgs::Pose &msg)
   omniPose.topRightCorner(3,1) = pOmni;
   omniPose(3,3) = 1.0;
 
-  omniPose = omniPose*OmniReg1;
+  //omniPose = omniPose*OmniReg1;
+  omniPose = OmniReg1Inv*omniPose*OmniReg1;
 
 }
 
@@ -796,6 +817,26 @@ int main(int argc, char *argv[])
   W_tracking(5,5) = lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
 
   std::cout << "W_tracking = " << std::endl << W_tracking << std::endl << std::endl;
+
+  //Set the weighting for the motion tracking (in task space)
+  double lambda_0 = 1.0;
+  Eigen::Matrix<double,3,3> m_W0 = Eigen::Matrix<double,3,3>::Zero();
+  m_W0(0,0) = lambda_0*1e8;
+  m_W0(1,1) = lambda_0*1e8;
+  m_W0(2,2) = lambda_0*1e8;;
+
+  //Set the weighting for the damping (in actuator space)
+  double lambda = 0.1;
+  //double lambda = 1.0;
+  double deg = 2;
+  Eigen::Matrix<double,6,6> m_WD = Eigen::Matrix<double,6,6>::Zero();
+  m_WD(0,0) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(1,1) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(2,2) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(3,3) = lambda*5e8;
+  m_WD(4,4) = lambda*5e8;
+  m_WD(5,5) = lambda*5e8;
+
 
   // damping weighting matrix (actuator space):
   Matrix6d W_damping = Eigen::Matrix<double,6,6>::Zero();
@@ -928,11 +969,13 @@ int main(int argc, char *argv[])
     for(int i=0; i<3; i++)
     {
       ptipcur(i) = get_starting_kin.response.p[i];
+      ptipcur2(i) = get_starting_kin.response.p2[i];
     }
 
     for(int i=0; i<4; i++)
     {
       qtipcur(i) = get_starting_kin.response.q[i];
+      qtipcur2(i) = get_starting_kin.response.q2[i];
     }
 
     for (int i=0; i<6; i++)
@@ -958,6 +1001,8 @@ int main(int argc, char *argv[])
   // Check that the kinematics got called once
   std::cout << "ptip at start = " << std::endl << ptipcur << std::endl << std::endl;
   std::cout << "qtip at start = " << std::endl << qtipcur << std::endl << std::endl;
+  std::cout << "ptip2 at start = " << std::endl << ptipcur2 << std::endl << std::endl;
+  std::cout << "qtip2 at start = " << std::endl << qtipcur2 << std::endl << std::endl;
   std::cout << "J at start = " << std::endl << Jcur << std::endl << std::endl;
 
   Eigen::Vector3d dhPrev;
@@ -971,9 +1016,10 @@ int main(int argc, char *argv[])
     {
       // take a "snapshot" of the current values from the kinematics and Omni for this loop iteration
       curOmni = omniPose;
-      ptip = ptipcur;
-      qtip = qtipcur;
-      alpha = alphacur;
+      ptip = ptipcur2;
+      qtip = qtipcur2;
+      //alpha = alphacur;
+      alpha = psiBeta;
       J = Jcur;
       Rtip = quat2rotm(qtip);
       robotTipFrame = assembleTransformation(Rtip,ptip);
@@ -1021,7 +1067,7 @@ int main(int argc, char *argv[])
           prevOmni = omniPose;
           //ROmniFrameAtClutch = assembleTransformation(omniFrameAtClutch.block(0,0,3,3),zerovec);
           Tregs = assembleTransformation(Rtip.transpose(),zerovec);
-          std::cout << "omniFrameAtClutch = " << std::endl << omniFrameAtClutch << std::endl << std::endl;
+          //std::cout << "omniFrameAtClutch = " << std::endl << omniFrameAtClutch << std::endl << std::endl;
           justClutched = false; // next time, skip this step
         }
 
@@ -1033,7 +1079,9 @@ int main(int argc, char *argv[])
 
         // convert to be expressed in the base coordinate frames
         Matrix4d RPrevOmni = assembleTransformation(prevOmni.block(0,0,3,3),zerovec);
-        Matrix4d omniDelta_omniBaseCoords = OmniReg*(Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose())*OmniRegInv; // omni base is same frame definition as cannula base
+        //Matrix4d omniDelta_omniBaseCoords = OmniReg*(Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose())*OmniRegInv; // omni base is same frame definition as cannula base
+        //Matrix4d omniDelta_omniBaseCoords = OmniRegInv*(Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose())*OmniReg; // omni base is same frame definition as cannula base
+        Matrix4d omniDelta_omniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose()); // omni base is same frame definition as cannula base
 
         // WE WANT TO USE OMNI BASE COORDS FOR LINEAR VELOCITY AND PEN COORDS FOR ANGULAR VELOCITY
 
@@ -1053,10 +1101,10 @@ int main(int argc, char *argv[])
         omniTwist_omniBaseCoords(4) = omniDelta_omniBaseCoords(0,2);	//w_y
         omniTwist_omniBaseCoords(5) = omniDelta_omniBaseCoords(1,0);	//w_z
 
-        std::cout << "omniTwist_omniPenCoords = " << std::endl << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
+        //std::cout << "omniTwist_omniPenCoords = " << std::endl << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
         std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
 
-        std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
+        //std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
 
         //TODO: add this back for haptic damping (Max 10/31/18)
         //Eigen::Vector3d V = omniTwist_omniBaseCoords.head(3);  // is this the right velocity vector? we want n_hat (unit direction vector) & vel_magnitude
@@ -1066,7 +1114,7 @@ int main(int argc, char *argv[])
         robotDesTwist.head(3) = omniTwist_omniBaseCoords.head(3);
         robotDesTwist.tail(3) = omniTwist_omniPenCoords.tail(3);
         robotDesTwist = scale_factor*robotDesTwist;
-        std::cout << "robotDesTwist = " << robotDesTwist.transpose() << std::endl << std::endl;
+        //std::cout << "robotDesTwist = " << robotDesTwist.transpose() << std::endl << std::endl;
 
         // Transformation from body Jacobian to hybrid
         Eigen::Matrix<double,6,6> RR = Eigen::Matrix<double,6,6>::Zero();
@@ -1074,13 +1122,16 @@ int main(int argc, char *argv[])
         RR.bottomRightCorner<3,3>() = Rtip;
         Eigen::Matrix<double,6,6> Jh = RR*J;
 
-        std::cout << "Jbody = " << std::endl << J << std::endl << std::endl;
-        std::cout << "Jhybrid = " << std::endl << Jh << std::endl << std::endl;
+        //std::cout << "Jbody = " << std::endl << J << std::endl << std::endl;
+        //std::cout << "Jhybrid = " << std::endl << Jh << std::endl << std::endl;
 
         // Now take body Jacobian for orientation + hybrid Jacobian for position to make mixed Jacobian
         Eigen::Matrix<double,6,6> Jmix;
         Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);
         Jmix.block(3,0,3,6) = J.block(3,0,3,6);
+
+
+        Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
 
         // Transformation from qbeta to qx:
         //Eigen::Matrix<double,6,6> Jx = Jh*dqbeta_dqx;
@@ -1110,14 +1161,19 @@ int main(int argc, char *argv[])
         //q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
 
 
-        Eigen::Matrix<double,6,6> A = Jmix.transpose()*W_tracking*Jmix + W_damping;
-        Vector6d b = Jmix.transpose()*W_tracking*robotDesTwist;
+        //Eigen::Matrix<double,6,6> A = Jh.transpose()*W_tracking*Jh + W_damping;
+        //Vector6d b = Jh.transpose()*W_tracking*robotDesTwist;
 
-        std::cout << "A = " << std::endl << A << std::endl << std::endl;
-        std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
+        Eigen::Vector3d xdot_des = robotDesTwist.topRows<3>();
+        Eigen::Matrix<double,6,6> A = Jh_position.transpose()*m_W0*Jh_position + m_WD;
+        Vector6d b = Jh_position.transpose()*m_W0*xdot_des;
+
+        //std::cout << "A = " << std::endl << A << std::endl << std::endl;
+        //std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
 
         Vector6d delta_q = A.partialPivLu().solve(b);
-        std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
+        //std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        //std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
         q_vec = q_vec + delta_q;
 
         Vector6d qx_vec = transformBetaToX(q_vec,L);
@@ -1125,7 +1181,14 @@ int main(int argc, char *argv[])
         q_vec = transformXToBeta(qx_vec,L);
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
-        std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
+        //std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
+        //std::cout << "psiBeta = " << std::endl << psiBeta.transpose() << std::endl << std::endl;
+        //std::cout << "alphacur = " << std::endl << alphacur.transpose() << std::endl << std::endl;
+
+        //std::cout << "ptipcur = " << std::endl << ptipcur.transpose() << std::endl << std::endl;
+        //std::cout << "ptipcur2 = " << std::endl << ptipcur2.transpose() << std::endl << std::endl;
+        //std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
+        //std::cout << "qtipcur2 = " << std::endl << qtipcur2.transpose() << std::endl << std::endl;
 
         std::cout << "----------------------------------------------------" << std::endl << std::endl;
 
