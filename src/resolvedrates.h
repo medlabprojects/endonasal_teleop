@@ -144,7 +144,7 @@ private:
   Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d XIn, Eigen::Vector3d L);
   Eigen::Vector3d limitBetaValsHardware(Eigen::Vector3d BetaIn);
   Eigen::Vector3d limitBetaValsBimanualAlgorithm(Eigen::Vector3d BetaIn, Eigen::Vector3d LIn);
-  double getVMag(const Eigen::VectorXd& e, double VMax, double VMin, double EMax, double EMin,
+  double getVMag(const Eigen::VectorXd& E, double VMax, double VMin, double EMax, double EMin,
                  double ConvergeRadius);
   WeightingRet getWeightingMatrix(Eigen::Vector3d X,
                                   Eigen::Vector3d dhPrev,
