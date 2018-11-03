@@ -3,16 +3,54 @@
 ResolvedRates::ResolvedRates()
 {
   // Robot Setup
+  auto cannula = defineRobot(Params_); // TODO: save this to class
 
-  // Initial Kinematics Call & Interp
+  // Home Position
+  CTR3ModelStateVector qHome; // Starting Configuration (HOME)
+  qHome.PsiL_ = Eigen::Vector3d::Zero();
+  qHome.Beta_ << -160.90E-3, -127.2E-3, -86.4E-3;
+  qHome.Ftip_ = Eigen::Vector3d::Zero();
+  qHome.Ttip_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d qHomeAlpha;
+  qHomeAlpha << 0.0, 0.0, 0.0;
+  QVec_.topRows(3) = qHome.PsiL_;
+  QVec_.bottomRows(3) = qHome.Beta_;
 
-  // Set Visualization (set member variables used for viz)
+  // Initial Kinematics Call
+  auto ret1 = Kinematics_with_dense_output( cannula, QVec_, OType() );
+  int nPts = ret1.arc_length_points.size();
+  double* ptr = &ret1.arc_length_points[0];
+  Eigen::Map<Eigen::VectorXd> s(ptr,nPts);
+
+  // Forward Kinematics (Results in Base Frame)
+  auto poseData = forwardKinematics(ret1); // TODO: save this to class
+
+  // Interpolate Robot Backbone
+  int nInterp = 200;
+  InterpolatedBackboneCur_ = interpolateBackbone(s.reverse(), poseData, nInterp);  // do we want to sae this or poseData w/ interp?
+  Eigen::MatrixXd poseDataOut(8,nInterp+nPts);
+  poseDataOut = Eigen::MatrixXd::Zero(8,nInterp+nPts);
+  Eigen::RowVectorXd ones(nInterp+nPts);
+  ones.fill(1);
+  Eigen::VectorXd sOut = InterpolatedBackboneCur_.s;
+  poseDataOut.topRows(3) = InterpolatedBackboneCur_.p;
+  poseDataOut.middleRows<4>(3) = InterpolatedBackboneCur_.q;
+  poseDataOut.bottomRows(1) = ones;
 
   // ResolvedRates Setup
+  PTip_ << poseDataOut(0,lastPosInterp_), poseDataOut(1,lastPosInterp_), poseDataOut(2,lastPosInterp_);
+  QTip_ << poseDataOut(3,lastPosInterp_), poseDataOut(4,lastPosInterp_), poseDataOut(5,lastPosInterp_),
+           poseDataOut(6,lastPosInterp_);
+
+  PTip2_ = ret1.pTip; // pTip in tipFrame
+  QTip2_ = ret1.qTip; // qTip in tipFrame
+
+  // Eigen::Matrix6d J = CTR::GetTipJacobianForTube1(ret1.y_final); //note: this is in tipFrame
 
   // Setup InputDevice
 
-  // -> spec robot & starting config, run kinematics the first time, set backbone, interp backbone, etc.
+  // Probably want to plot initial pose of robot before init()
+
 }
 
 ResolvedRates::~ResolvedRates()
@@ -26,9 +64,27 @@ bool ResolvedRates::init(std::string Name)
 }
 
 bool ResolvedRates::setRRGains(double ScaleFactor, double LambdaTracking,
-                               double LambdaDamping, double LambdaJointLims)
+                               double LambdaDamping)
 {
-  // set weighting matrices WTracking_ WDamping_ WJointLims_ -> these are member variables of ResolvedRates class
+  WTracking_ = Eigen::Matrix6d::Zero();
+  WTracking_(0,0) = LambdaTracking;
+  WTracking_(1,1) = LambdaTracking;
+  WTracking_(2,2) = LambdaTracking;
+  WTracking_(3,3) = 0.1*LambdaTracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+  WTracking_(4,4) = 0.1*LambdaTracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+  WTracking_(5,5) = 0.1*LambdaTracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+
+  WDamping_ = Eigen::Matrix6d::Zero();
+  double thetadeg = 2.0; // degrees to damp as much as 1mm
+  WDamping_(0,0) = LambdaDamping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
+  WDamping_(1,1) = LambdaDamping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
+  WDamping_(2,2) = LambdaDamping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
+  WDamping_(3,3) = LambdaDamping*1.0E6;
+  WDamping_(4,4) = LambdaDamping*1.0E6;
+  WDamping_(5,5) = LambdaDamping*1.0E6;
+
+  return true; // successfully set WTracking & WDamping
+
 }
 
 bool ResolvedRates::setInputDeviceTransform(Matrix4d TRegistration)
@@ -39,6 +95,11 @@ bool ResolvedRates::setInputDeviceTransform(Matrix4d TRegistration)
 // Math Methods
 double ResolvedRates::deg2rad (double degrees) {
   return degrees * 4.0 * atan (1.0) / 180.0;
+}
+double ResolvedRates::sgn(double x)
+{
+  double s = (x > 0) - (x < 0);
+  return s;
 }
 double ResolvedRates::vectornorm(Eigen::Vector3d v)
 {
@@ -191,11 +252,6 @@ Eigen::Matrix4d ResolvedRates::inverseTransform(Eigen::Matrix4d T)
 
   return Tinv;
 }
-double sgn(double x)
-{
-  double s = (x > 0) - (x < 0);
-  return s;
-}
 Eigen::Matrix7d ResolvedRates::collapseTransform(Eigen::Matrix4d T)
 {
   Eigen::Matrix7d X;
@@ -237,9 +293,9 @@ Eigen::Vector4d ResolvedRates::slerp(Eigen::Vector4d Qa, Eigen::Vector4d Qb, dou
   Qm(3) = ratioA*Qa(3) + ratioB*Qb(3);
   return Qm;
 }
-Eigen::Matrix<double,4,Eigen::Dynamic> quatInterp(Eigen::Matrix<double,4,Eigen::Dynamic> refQuat,
-                                                  Eigen::VectorXd refArcLengths,
-                                                  Eigen::VectorXd interpArcLengths)
+Eigen::Matrix<double,4,Eigen::Dynamic> ResolvedRates::quatInterp(Eigen::Matrix<double,4,Eigen::Dynamic> refQuat,
+                                                                 Eigen::VectorXd refArcLengths,
+                                                                 Eigen::VectorXd interpArcLengths)
 {
   int count = 0;
   int N = interpArcLengths.size();
@@ -258,99 +314,6 @@ Eigen::Matrix<double,4,Eigen::Dynamic> quatInterp(Eigen::Matrix<double,4,Eigen::
 
   return quatInterpolated;
 }
-
-InterpRet interpolateBackbone(Eigen::VectorXd sRef, Eigen::MatrixXd poseDataRef, int nPts)
-
-{
-  Eigen::Matrix<double,4,Eigen::Dynamic> qRef;
-  qRef = poseDataRef.middleRows<4>(3);
-
-  // Create a zero to one list for ref arc lengths
-  int nRef = sRef.size();
-  double totalArcLength = sRef(nRef-1) - sRef(0);
-  Eigen::VectorXd sRef0Vec(nRef);
-  sRef0Vec.fill(sRef(0));
-  Eigen::VectorXd zeroToOne = (1/totalArcLength)*(sRef - sRef0Vec);
-
-  // Create a zero to one vector including ref arc lengths & interp arc lengths (evenly spaced)
-  int nPtsTotal = nPts+nRef;
-  lastPosInterp_ = nPtsTotal - 1;
-
-  Eigen::VectorXd xxLinspace(nPts);
-  xxLinspace.fill(0.0);
-  xxLinspace.setLinSpaced(npts,0.0,1.0);
-  Eigen::VectorXd xxUnsorted(nPtsTotal);
-  xxUnsorted << xxLinspace, zeroToOne;
-  std::sort(xxUnsorted.data(),xxUnsorted.data+xxUnsorted.size());
-  Eigen::VectorXd xx = xxUnsorted.reverse(); //Rich's interpolation functions call for descending order
-
-  // List of return arc lengths in the original scaling/offset
-  Eigen::VectorXd xxSRef0Vec(nPtsTotal);
-  xxSRef0Vec.fill(sRef(0));
-  Eigen::VectorXd sInterp = totalArcLength*xx.reverse()+xxSRef0Vec;
-
-  // Interpolate to find list of return quaternions
-  Eigen::MatrixXd qInerp1 = quatInterp(qRef.rowwise().reverse(),zeroToOne.reverse(),xx);
-  Eigen::MatrixXd qInterp = qInterp1.rowwise().reverse();
-
-  // Interpolate to find list of return positions
-  std::vector<double> sVec;
-  sVec.resize(sRef.size());
-  Eigen::VectorXd::Map(&sVec[0],sRef.size()) = sRef;
-
-  Eigen::VectorXd X = poseDataRef.row(0); // interp x
-  std::vector<double> xVec;
-  xVec.resize(X.size());
-  Eigen::VectorXd::Map(&xVec[0],x.size()) = X;
-  tk::spline Sx;
-  Sx.set_points(sVec,xVec);
-  Eigen::VectorXd xInterp(nPtsTotal);
-  xInterp.fill(0);
-  for (int i = 0; i < nPtsTotal; i++)
-  {
-    xInterp(i) = Sx(sInterp(i));
-  }
-
-  Eigen::VectorXd Y = poseDataRef.row(1); // interp y
-  std::vector<double> yVec;
-  yVec.resize(Y.size());
-  Eigen::VectorXd::Map(&yVec[0],Y.size()) = Y;
-  tk::spline Sy;
-  Sy.set_points(sVec,yVec);
-  Eigen::VectorXd yInterp(nPtsTotal);
-  yInterp.fill(0);
-  for (int i = 0; i < nPtsTotal; i++)
-  {
-    yInterp(i) = Sy(sInterp(i));
-  }
-
-  Eigen::VectorXd Z = poseDataRef.row(2); // interp z
-  std::vector<double> zVec;
-  zVec.resize(Z.size());
-  Eigen::VectorXd::Map(&zVec[0],Z.size()) = Z;
-  tk::spline Sz;
-  Sz.set_points(sVec,zVec);
-  Eigen::VectorXd zInterp(nPtsTotal);
-  for (int i = 0; i < nPtsTotal; i++)
-  {
-    zInterp(i) = Sz(sInterp(i));
-  }
-
-  Eigen::MatrixXd pInterp(3,nPtsTotal);
-  pInterp.fill(0);
-  pInterp.row(0) = xInterp.transpose();
-  pInterp.row(1) = yInterp.transpose();
-  pInterp.row(2) = zInterp.transpose();
-
-  InterpRet interpResults;
-  interpResults.s = sInterp;
-  interpResults.p = pInterp;
-  interpResults.q = qInterp;
-
-  return interpResults;
-
-}
-
 void ResolvedRates::getCofactor(double A[6][6], double Temp[6][6], int P, int Q, int N)
 {
   int i = 0, j = 0;
@@ -443,9 +406,194 @@ void ResolvedRates::inverse(double A[6][6], double Inverse[6][6])
 }
 
 // Robotics Methods
-auto ResolvedRates::callKinematics(auto kinCall); //TODO: write this
-auto ResolvedRates::forwardKinematics(auto kin);  //TOFO: write this
+auto ResolvedRates::defineRobot(CTR3RobotParams params)
+{
+  constant_fun< Vector<2>::type > k_fun1( (1.0/params.k1)*Eigen::Vector2d::UnitX() );
+  constant_fun< Vector<2>::type > k_fun2( (1.0/params.k2)*Eigen::Vector2d::UnitX() );
+  constant_fun< Vector<2>::type > k_fun3( (1.0/params.k3)*Eigen::Vector2d::UnitX() );
 
+  T1_type T1 = make_annular_tube( params.L1, params.Lt1, params.OD1, params.ID1,
+                                  k_fun1, params.E, params.G);
+  T2_type T2 = make_annular_tube( params.L2, params.Lt2, params.OD2, params.ID2,
+                                  k_fun2, params.E, params.G);
+  T3_type T3 = make_annular_tube( params.L3, params.Lt3, params.OD3, params.ID3,
+                                  k_fun3, params.E, params.G);
+
+  // cannula is input to Kinematics_with_dense_output()
+  auto cannula = std::make_tuple( T1, T2, T3);
+
+  return cannula;
+}
+auto ResolvedRates::callKinematics(CTR3ModelStateVector newStateVector)
+{
+    Eigen::Vector6d Q;
+    Q.topRows(3) = newStateVector.PsiL_;
+    Q.bottomRows(3) = newStateVector.Beta_;
+
+    auto cannula = defineRobot(CTR3RobotParams); // TODO: save this to class so we don't define here everytime
+
+    auto ret1 = Kinematics_with_dense_output( cannula, Q, OType() );
+    int nPts = ret1.arc_length_points.size();
+    double* ptr = &ret1.arc_length_points[0];
+    Eigen::Map<Eigen::VectorXd> s(ptr,nPts);
+
+    // Forward Kinematics (Results in Base Frame)
+    auto poseData = forwardKinematics(ret1); // TODO: save this to class
+
+}
+
+Eigen::MatrixXd ResolvedRates::forwardKinematics(auto kin)
+{
+  int nPts = kin.arc_length_points.size();
+  double* ptr = &kin.arc_length_points[0];
+  Eigen::Map<Eigen::VectorXd> s(ptr,nPts);
+  Eigen::VectorXd sAbs(nPts);
+  for (int i = 0; i < nPts; i++)
+  {
+    sAbs(i) = fabs(s(i));
+  }
+
+  Eigen::MatrixXd pos(3,nPts);
+  Eigen::MatrixXd quat(4,nPts);
+  Eigen::MatrixXd psiAngles(3,nPts);
+  for (int j = 0; j < nPts; j++)
+  {
+    double* pPtr = &ret1.dense_state_output[j].p[0];
+    double* qPtr = &ret1.dense_state_output[j].q[o];
+    double* psiPtr = &ret1.dense_state_output[j].Psi[o];
+    Eigen::Map<Eigen::Vector3d> pj(pPtr,3);
+    Eigen::Map<Eigen::Vector4d> qj(qPtr,4);
+    Eigen::Map<Eigen::Vector3d> psij(psiPtr,3);
+
+    pos.col(j) = pj;
+    quat.col(j) = qj;
+    psiAngles.col(j) = psij;
+  }
+
+  int basePlateIdx;
+  sAbs.minCoeff(&basePlateIdx);
+
+  Eigen::Matrix3d Rbt;
+  Eigen::Vector3d pbt;
+  Matrix4d Tbt;
+  Eigen::Matrix3d Rjt;
+  Matrix4d Tjt;
+  Matrix4d Tjb;
+  Vector7d tjb;
+  Vector8d x;
+
+  Eigen::Vector3d baseRotations;
+  baseRotations << psiAngles(0,basePlateIdx), psiAngles(1,basePlateIdx), psiAngles(2,basePlateIdx);
+
+  Rbt = quat2rotm(quat.col(nPts-1));
+  pbt = pos.col(nPts-1) - qHome.Beta_(0)*Eigen::Vector3d::UnitZ();
+  Tbt = assembleTransformation(Rbt,pos.col(nPts-1));
+
+  Eigen::MatrixXd poseData(8,nPts);
+  for (int j = 0; j < nPts; j++)
+  {
+    Rjt = quat2rotm(quat.col(nPts-j-1));
+    Tjt = assembleTransformation(Rjt,pos.col(nPts-j-1));
+    Tjb = inverseTransform(Tbt)*Tjt;
+    tjb = collapseTransform(Tjb);
+
+    x.fill(0);
+    x.head<7>() = tjb;
+    x(7) = 1.0;
+    poseData.col(j) = x;
+  }
+  return poseData;
+}
+InterpRet ResolvedRates::interpolateBackbone(Eigen::VectorXd sRef, Eigen::MatrixXd poseDataRef, int nPts)
+{
+  Eigen::Matrix<double,4,Eigen::Dynamic> qRef;
+  qRef = poseDataRef.middleRows<4>(3);
+
+  // Create a zero to one list for ref arc lengths
+  int nRef = sRef.size();
+  double totalArcLength = sRef(nRef-1) - sRef(0);
+  Eigen::VectorXd sRef0Vec(nRef);
+  sRef0Vec.fill(sRef(0));
+  Eigen::VectorXd zeroToOne = (1/totalArcLength)*(sRef - sRef0Vec);
+
+  // Create a zero to one vector including ref arc lengths & interp arc lengths (evenly spaced)
+  int nPtsTotal = nPts+nRef;
+  lastPosInterp_ = nPtsTotal - 1;
+
+  Eigen::VectorXd xxLinspace(nPts);
+  xxLinspace.fill(0.0);
+  xxLinspace.setLinSpaced(npts,0.0,1.0);
+  Eigen::VectorXd xxUnsorted(nPtsTotal);
+  xxUnsorted << xxLinspace, zeroToOne;
+  std::sort(xxUnsorted.data(),xxUnsorted.data+xxUnsorted.size());
+  Eigen::VectorXd xx = xxUnsorted.reverse(); //Rich's interpolation functions call for descending order
+
+  // List of return arc lengths in the original scaling/offset
+  Eigen::VectorXd xxSRef0Vec(nPtsTotal);
+  xxSRef0Vec.fill(sRef(0));
+  Eigen::VectorXd sInterp = totalArcLength*xx.reverse()+xxSRef0Vec;
+
+  // Interpolate to find list of return quaternions
+  Eigen::MatrixXd qInerp1 = quatInterp(qRef.rowwise().reverse(),zeroToOne.reverse(),xx);
+  Eigen::MatrixXd qInterp = qInterp1.rowwise().reverse();
+
+  // Interpolate to find list of return positions
+  std::vector<double> sVec;
+  sVec.resize(sRef.size());
+  Eigen::VectorXd::Map(&sVec[0],sRef.size()) = sRef;
+
+  Eigen::VectorXd X = poseDataRef.row(0); // interp x
+  std::vector<double> xVec;
+  xVec.resize(X.size());
+  Eigen::VectorXd::Map(&xVec[0],x.size()) = X;
+  tk::spline Sx;
+  Sx.set_points(sVec,xVec);
+  Eigen::VectorXd xInterp(nPtsTotal);
+  xInterp.fill(0);
+  for (int i = 0; i < nPtsTotal; i++)
+  {
+    xInterp(i) = Sx(sInterp(i));
+  }
+
+  Eigen::VectorXd Y = poseDataRef.row(1); // interp y
+  std::vector<double> yVec;
+  yVec.resize(Y.size());
+  Eigen::VectorXd::Map(&yVec[0],Y.size()) = Y;
+  tk::spline Sy;
+  Sy.set_points(sVec,yVec);
+  Eigen::VectorXd yInterp(nPtsTotal);
+  yInterp.fill(0);
+  for (int i = 0; i < nPtsTotal; i++)
+  {
+    yInterp(i) = Sy(sInterp(i));
+  }
+
+  Eigen::VectorXd Z = poseDataRef.row(2); // interp z
+  std::vector<double> zVec;
+  zVec.resize(Z.size());
+  Eigen::VectorXd::Map(&zVec[0],Z.size()) = Z;
+  tk::spline Sz;
+  Sz.set_points(sVec,zVec);
+  Eigen::VectorXd zInterp(nPtsTotal);
+  for (int i = 0; i < nPtsTotal; i++)
+  {
+    zInterp(i) = Sz(sInterp(i));
+  }
+
+  Eigen::MatrixXd pInterp(3,nPtsTotal);
+  pInterp.fill(0);
+  pInterp.row(0) = xInterp.transpose();
+  pInterp.row(1) = yInterp.transpose();
+  pInterp.row(2) = zInterp.transpose();
+
+  InterpRet interpResults;
+  interpResults.s = sInterp;
+  interpResults.p = pInterp;
+  interpResults.q = qInterp;
+
+  return interpResults;
+
+}
 Vector6d ResolvedRates::saturateJointVelocities(Vector6d DeltaQx, int NodeFreq)
 {
   double max_rot_speed = 0.8; // rad/sec
@@ -681,9 +829,9 @@ double ResolvedRates::getVMag(const Eigen::VectorXd& E, double VMax, double VMin
 
   return vMag;
 }
-WeightingRet ResolvedRates::getWeightingMatrix(Eigen::Vector3d X,
-                                Eigen::Vector3d dhPrev,
-                                Eigen::Vector3d L, double lambda)
+WeightingRet ResolvedRates::getWJointLims(Eigen::Vector3d X,
+                                          Eigen::Vector3d dhPrev,
+                                          Eigen::Vector3d L, double lambda)
 {
   Eigen::Matrix<double,6,6> W = MatrixXd::Identity(6,6);
 

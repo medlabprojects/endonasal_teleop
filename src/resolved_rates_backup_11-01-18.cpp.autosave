@@ -758,6 +758,7 @@ void zero_force()
   omniForce.z = 0.0;
 }
 
+// note: this works, but doesn't feel great due to slow rate -> do this on omninode side
 void setDampingForce(Vector3d V)
 {
 
