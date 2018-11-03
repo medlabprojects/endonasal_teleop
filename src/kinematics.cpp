@@ -519,7 +519,7 @@ int main(int argc, char *argv[])
     startingConfigPublished = false;
 
 /*******************************************************************************
-                DEFINE CANNULA & IT'S STARTING/HOME POSE
+                DEFINE CANNULA & ITS STARTING/HOME POSE
 ********************************************************************************/
 
     // Cannula definition...

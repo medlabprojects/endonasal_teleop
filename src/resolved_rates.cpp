@@ -1056,7 +1056,7 @@ int main(int argc, char *argv[])
           pubEncoderCommand2.publish(enc2);
         }
 
-        std::cout << "curOmni = " << curOmni << std::endl << std::endl;
+        //std::cout << "curOmni = " << curOmni << std::endl << std::endl;
 
 
         // if this is the first time step of clutch in, we need to save the robot pose & the omni pose
@@ -1081,7 +1081,7 @@ int main(int argc, char *argv[])
         Matrix4d RPrevOmni = assembleTransformation(prevOmni.block(0,0,3,3),zerovec);
         //Matrix4d omniDelta_omniBaseCoords = OmniReg*(Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose())*OmniRegInv; // omni base is same frame definition as cannula base
         //Matrix4d omniDelta_omniBaseCoords = OmniRegInv*(Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose())*OmniReg; // omni base is same frame definition as cannula base
-        Matrix4d omniDelta_omniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose()); // omni base is same frame definition as cannula base
+        Matrix4d omniDelta_omniBaseCoords = Mtransform::Inverse(RPrevOmni.transpose())*omniDelta_omniPenCoords*RPrevOmni.transpose(); // omni base is same frame definition as cannula base
 
         // WE WANT TO USE OMNI BASE COORDS FOR LINEAR VELOCITY AND PEN COORDS FOR ANGULAR VELOCITY
 
@@ -1102,9 +1102,9 @@ int main(int argc, char *argv[])
         omniTwist_omniBaseCoords(5) = omniDelta_omniBaseCoords(1,0);	//w_z
 
         //std::cout << "omniTwist_omniPenCoords = " << std::endl << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
-        std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
+        //std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
 
-        //std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
+        std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
 
         //TODO: add this back for haptic damping (Max 10/31/18)
         //Eigen::Vector3d V = omniTwist_omniBaseCoords.head(3);  // is this the right velocity vector? we want n_hat (unit direction vector) & vel_magnitude
@@ -1172,8 +1172,8 @@ int main(int argc, char *argv[])
         //std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
 
         Vector6d delta_q = A.partialPivLu().solve(b);
-        //std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
-        //std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
+        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
         q_vec = q_vec + delta_q;
 
         Vector6d qx_vec = transformBetaToX(q_vec,L);
@@ -1181,7 +1181,7 @@ int main(int argc, char *argv[])
         q_vec = transformXToBeta(qx_vec,L);
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
-        //std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
+        std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
         //std::cout << "psiBeta = " << std::endl << psiBeta.transpose() << std::endl << std::endl;
         //std::cout << "alphacur = " << std::endl << alphacur.transpose() << std::endl << std::endl;
 

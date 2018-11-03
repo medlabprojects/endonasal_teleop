@@ -1,0 +1,12 @@
+#include "resolvedrates.h"
+
+ResolvedRates::ResolvedRates()
+{
+  
+  
+  
+}
+
+ResolvedRates();
+bool setRRGains(double ScaleFactor, double LambdaTracking, double LambdaDamping, double LambdaJointLims);
+bool setInputDeviceTransform(Matrix4d TRegistration);
