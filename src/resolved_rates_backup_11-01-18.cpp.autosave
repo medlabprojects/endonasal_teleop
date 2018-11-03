@@ -285,7 +285,9 @@ void inverse(double A[6][6], double inverse[6][6])
   }
 }
 
-/
+
+// ROBOTICS FUNCTION DEFINITIONS --------------------------------
+
 Vector6d saturateJointVelocities(Vector6d delta_qx, int node_freq)
 {
 
@@ -428,7 +430,6 @@ weightingRet getWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen
   output.dh = dh;
   return output;
 }
-
 
 Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d x_in, Eigen::Vector3d L)
 {

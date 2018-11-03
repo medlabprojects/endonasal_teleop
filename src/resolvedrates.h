@@ -7,6 +7,7 @@
 #include "Kinematics.h"
 #include "BasicFunctions.h"
 #include "Tube.h"
+#include "spline.h"
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -35,7 +36,7 @@ typedef Eigen::Matrix<double,6,1> Vector6d;
 typedef tuple < Tube< constant_fun< Vector2d > >,
                 Tube< constant_fun< Vector2d > >,
                 Tube< constant_fun< Vector2d > > > Cannula3;
-typedef constatnd_fun<Eigen::Vector2d> CurvFun;
+typedef constant_fun<Eigen::Vector2d> CurvFun;
 typedef std::tuple< Tube<CurvFun>, Tube<CurvFun> > CannulaT;
 typedef DeclareOptions< Option::ComputeJacobian, Option::ComputeGeometry, Option::ComputeStability, Option::ComputeCompliance>::options OType;
 
@@ -45,6 +46,27 @@ struct CTR3ModelStateVector {
   Eigen::Vector3d Beta_;
   Eigen::Vector3d Ftip_;
   Eigen::Vector3d Ttip_;
+};
+
+struct KinOut {
+  Eigen::Vector3d p_;
+  Eigen::Vector4d q_;
+  Eigen::Vector3d p2_;
+  Eigen::Vector4d q2_;
+  Eigen::Vector3d alpha_;
+  Eigen::Vector3d psiBeta_;
+  Matrix6d J1_;
+  Matrix6d J2_;
+  Matrix6d J3_;
+  Matrix6d J4_;
+  Matrix6d J5_;
+  Matrix6d J6_;
+};
+
+struct InterpRet {
+  Eigen::VectorXd s;
+  Eigen::MatrixXd p;
+  Eigen::MatrixXd q;
 };
 
 struct WeightingRet {
@@ -58,6 +80,7 @@ class ResolvedRates
 public:
 
   ResolvedRates();
+  ~ResolvedRates();
   bool init(std::string Name);
   bool setRRGains(double ScaleFactor, double LambdaTracking, double LambdaDamping, double LambdaJointLims);
   bool setInputDeviceTransform(Matrix4d TRegistration);
@@ -111,6 +134,9 @@ private:
 
   Eigen::Vector3d L_; // lengths of tubes
 
+  // Kinematics
+  int lastPosInterp_;
+
   // Math Vars
   Eigen::Vector3d Zerovec_;
   double Theta_;
@@ -128,14 +154,24 @@ private:
   Eigen::Matrix3d orthonormalize(Eigen::Matrix3d R);
   Eigen::Matrix4d assembleTransformation(Eigen::Matrix3d Rot, Eigen::Vector3d Trans);
   Eigen::Matrix3d quat2rotm(Eigen::Vector4d Quat);
+  Eigen::Vector4d rotm2quat(Eigen::Matrix3d R);
   Eigen::Matrix3d hat3(Eigen::Vector3d X);
   Eigen::Matrix6d MAdjoint(Eigen::Matrix4d T);
+  Eigen::Matrix6d Adjoint_pq(Eigen::Vector3d p, Eigen::Vector4d q);
+  Eigen::Matrix4d inverseTransform(Eigen::Matrix4d T);
+  double sgn(double x);
+  Eigen::Matrix7d collapseTransform(Eigen::Matrix4d T);
+  Eigen::Vector4d slerp(Eigen::Vector4d Qa, Eigen::Vector4d Qb, double t);
+  Eigen::Matrix<double,4,Eigen::Dynamic> quatInterp(Eigen::Matrix<double,4,Eigen::Dynamic> refQuat,
+                                                    Eigen::VectorXd refArcLengths,
+                                                    Eigen::VectorXd interpArcLengths);
   void getCofactor(double A[6][6], double Temp[6][6], int P, int Q, int N);
   double determinant(double A[6][6], int N);
   void adjoint(double A[6][6], double Adj[6][6]);
   void inverse(double A[6][6], double Inverse[6][6]);
 
   // Robotics Methods
+  auto kinematicsCall(auto kinCall);
   auto forwardKinematics(auto kin);
   Vector6d saturateJointVelocities(Vector6d DeltaQx, int NodeFreq);
   Vector6d transformBetaToX(Vector6d Qbeta, Eigen::Vector3d L);

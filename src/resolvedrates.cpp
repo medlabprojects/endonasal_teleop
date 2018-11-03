@@ -2,13 +2,27 @@
 
 ResolvedRates::ResolvedRates()
 {
+  // Robot Setup
 
+  // Initial Kinematics Call & Interp
+
+  // Set Visualization (set member variables used for viz)
+
+  // ResolvedRates Setup
+
+  // Setup InputDevice
+
+  // -> spec robot & starting config, run kinematics the first time, set backbone, interp backbone, etc.
+}
+
+ResolvedRates::~ResolvedRates()
+{
+  // Handle Deletion of Instance of ResolvedRates class
 }
 
 bool ResolvedRates::init(std::string Name)
 {
-  // do initialization stuff
-  // -> spec robot & starting config, run kinematics the first time, set backbone, interp backbone, etc.
+  // Go Online..
 }
 
 bool ResolvedRates::setRRGains(double ScaleFactor, double LambdaTracking,
@@ -23,15 +37,15 @@ bool ResolvedRates::setInputDeviceTransform(Matrix4d TRegistration)
 }
 
 // Math Methods
-double deg2rad (double degrees) {
+double ResolvedRates::deg2rad (double degrees) {
   return degrees * 4.0 * atan (1.0) / 180.0;
 }
-double vectornorm(Eigen::Vector3d v)
+double ResolvedRates::vectornorm(Eigen::Vector3d v)
 {
   double n = sqrt(v.transpose()*v);
   return n;
 }
-Eigen::Matrix3d orthonormalize(Eigen::Matrix3d R)
+Eigen::Matrix3d ResolvedRates::orthonormalize(Eigen::Matrix3d R)
 {
   Eigen::Matrix3d R_ortho;
   R_ortho.fill(0);
@@ -56,7 +70,7 @@ Eigen::Matrix3d orthonormalize(Eigen::Matrix3d R)
   R_ortho.col(2) = R_ortho.col(2)/vectornorm(R_ortho.col(2));
   return R_ortho;
 }
-Eigen::Matrix4d assembleTransformation(Eigen::Matrix3d Rot, Eigen::Vector3d Trans)
+Eigen::Matrix4d ResolvedRates::assembleTransformation(Eigen::Matrix3d Rot, Eigen::Vector3d Trans)
 {
   Rot = orthonormalize(Rot);
   Eigen::Matrix4d T;
@@ -66,7 +80,7 @@ Eigen::Matrix4d assembleTransformation(Eigen::Matrix3d Rot, Eigen::Vector3d Tran
   T(3,3) = 1;
   return T;
 }
-Eigen::Matrix3d quat2rotm(Eigen::Vector4d Quat)
+Eigen::Matrix3d ResolvedRates::quat2rotm(Eigen::Vector4d Quat)
 {
   // Agrees with Matlab
   // Quaternion order is wxyz
@@ -86,7 +100,52 @@ Eigen::Matrix3d quat2rotm(Eigen::Vector4d Quat)
   R(2,2) = pow(Quat(0),2) - pow(Quat(1),2) - pow(Quat(2),2) + pow(Quat(3),2);
   return R;
 }
-Eigen::Matrix3d hat3(Eigen::Vector3d X)
+Eigen::Vector4d ResolvedRates::rotm2quat(Eigen::Matrix3d R)
+{
+  R = orthonormalize(R);
+  Eigen::Vector4d Q;
+  Q.fill(0);
+
+  double trace = R(0,0) + R(1,1) + R(2,2);
+  if (trace > 0)
+  {
+      double s = 0.5*sqrt(trace+1.0);
+      Q(0) = s; //w eqn
+      Q(1) = (R(2,1)-R(1,2))/(4*s); //x eqn
+      Q(2) = (R(0,2)-R(2,0))/(4*s); //y eqn
+      Q(3) = (R(1,0)-R(0,1))/(4*s); //z eqn
+  }
+  else
+  {
+     if(R(0,0)>R(1,1) && R(0,0)>R(2,2))
+     {
+          double s = 0.5*sqrt(1.0 + R(0,0) - R(1,1) - R(2,2));
+          Q(0) = (R(2,1) - R(1,2))*s; //w eqn
+          Q(1) = s; //x eqn
+          Q(2) = (R(0,1)+R(1,0))*s; //y eqn
+          Q(3) = (R(0,2)+R(2,0))*s; //z eqn
+      }
+     else if (R(1,1)>R(2,2))
+     {
+          double s = 0.5*sqrt(1.0 + R(1,1) - R(0,0) - R(2,2));
+          Q(0) = (R(0,2)-R(2,0))*s; //w eqn
+          Q(1) = (R(0,1)+R(1,0))*s; //x eqn
+          Q(2) = s; //y eqn
+          Q(3) = (R(1,2)+R(2,1))*s; //z eqn
+      }
+     else
+     {
+          double s = 0.5*sqrt(1.0 + R(2,2) - R(0,0) - R(1,1));
+          Q(0) = (R(1,0)-R(0,1))*s; //w eqn
+          Q(1) = (R(0,2)+R(2,0))*s; //x eqn
+          Q(2) = (R(1,2)+R(2,1))*s; //y eqn
+          Q(3) = s; //z eqn
+      }
+  }
+
+  return Q;
+}
+Eigen::Matrix3d ResolvedRates::hat3(Eigen::Vector3d X)
 {
   Eigen::Matrix3d xhat;
   xhat.fill(0);
@@ -98,7 +157,7 @@ Eigen::Matrix3d hat3(Eigen::Vector3d X)
   xhat(2,1) = X(0);
   return xhat;
 }
-Eigen::Matrix6d MAdjoint(Eigen::Matrix4d T)
+Eigen::Matrix6d ResolvedRates::MAdjoint(Eigen::Matrix4d T)
 {
   Eigen::Matrix3d phat = hat3(T.topRightCorner(3,1));
   Eigen::Matrix3d R = T.topLeftCorner(3,3);
@@ -111,7 +170,188 @@ Eigen::Matrix6d MAdjoint(Eigen::Matrix4d T)
 
   return AdjT;
 }
-void getCofactor(double A[6][6], double Temp[6][6], int P, int Q, int N)
+Eigen::Matrix6d ResolvedRates::Adjoint_pq(Eigen::Vector3d p, Eigen::Vector4d q)
+{
+  Eigen::Matrix3d R = quat2rotm(q);
+  Eigen::Matrix3d phat = hat3(p);
+  Eigen::Matrix6d Ad = Eigen::Matrix6d::Zero();
+  Ad.topLeftCorner<3,3>() = R;
+  Ad.bottomRightCorner<3,3>() = R;
+  Ad.topRightCorner<3,3>() = phat*R;
+
+  return Ad;
+}
+Eigen::Matrix4d ResolvedRates::inverseTransform(Eigen::Matrix4d T)
+{
+  Eigen::Matrix4d Tinv;
+  Tinv.fill(0);
+  Tinv.topLeftCorner(3,3) = T.topLeftCorner(3,3).transpose();
+  Tinv.topRightCorner(3,1) = -1.0*T.topLeftCorner(3,3).transpose()*T.topRightCorner(3,1);
+  Tinv(3,3) = 1.0;
+
+  return Tinv;
+}
+double sgn(double x)
+{
+  double s = (x > 0) - (x < 0);
+  return s;
+}
+Eigen::Matrix7d ResolvedRates::collapseTransform(Eigen::Matrix4d T)
+{
+  Eigen::Matrix7d X;
+  X.fill(0);
+  X.head(3) = T.topRightCorner(3,1);
+  X.tail(4) = rotm2quat(T.topLeftCorner(3,3));
+  return X;
+}
+Eigen::Vector4d ResolvedRates::slerp(Eigen::Vector4d Qa, Eigen::Vector4d Qb, double t)
+{
+  Eigen::Vector4d Qm;
+  Qm.fill(0);
+
+  double cosHalfTheta = Qa.transpose()*Qb;
+  if (abs(cosHalfTheta) >= 1.0)
+  {
+    Qm = Qa;
+    return Qm;
+  }
+
+  double halfTheta = acos(cosHalfTheta);
+  double sinHalfTheta = sqrt(1.0-cosHalfTheta*cosHalfTheta);
+
+  if (abs(sinHalfTheta) < 0.001)
+  {
+    Qm(0) = 0.5*Qa(0) + 0.5*Qb(0);
+    Qm(1) = 0.5*Qa(1) + 0.5*Qb(1);
+    Qm(2) = 0.5*Qa(2) + 0.5*Qb(2);
+    Qm(3) = 0.5*Qa(3) + 0.5*Qb(3);
+    return Qm;
+  }
+
+  double ratioA = sin((1-t)*halfTheta)/sinHalfTheta;
+  double ratioB = sin(t*halfTheta) / sinHalfTheta;
+
+  Qm(0) = ratioA*Qa(0) + ratioB*Qb(0);
+  Qm(1) = ratioA*Qa(1) + ratioB*Qb(1);
+  Qm(2) = ratioA*Qa(2) + ratioB*Qb(2);
+  Qm(3) = ratioA*Qa(3) + ratioB*Qb(3);
+  return Qm;
+}
+Eigen::Matrix<double,4,Eigen::Dynamic> quatInterp(Eigen::Matrix<double,4,Eigen::Dynamic> refQuat,
+                                                  Eigen::VectorXd refArcLengths,
+                                                  Eigen::VectorXd interpArcLengths)
+{
+  int count = 0;
+  int N = interpArcLengths.size();
+  Eigen::MatrixXd quatInterpolated(4,N);
+  quatInterpolated.fill(0);
+
+  for(int i=0; i<N; i+=1)
+  {
+      if(interpArcLengths(i) < refArcLengths(count+1)){
+          count = count+1;
+      }
+      double L = refArcLengths(count) - refArcLengths(count+1);
+      double t = (refArcLengths(count)-interpArcLengths(i))/L;
+      quatInterpolated.col(i) = slerp(refQuat.col(count), refQuat.col(count+1), t);
+  }
+
+  return quatInterpolated;
+}
+
+InterpRet interpolateBackbone(Eigen::VectorXd sRef, Eigen::MatrixXd poseDataRef, int nPts)
+
+{
+  Eigen::Matrix<double,4,Eigen::Dynamic> qRef;
+  qRef = poseDataRef.middleRows<4>(3);
+
+  // Create a zero to one list for ref arc lengths
+  int nRef = sRef.size();
+  double totalArcLength = sRef(nRef-1) - sRef(0);
+  Eigen::VectorXd sRef0Vec(nRef);
+  sRef0Vec.fill(sRef(0));
+  Eigen::VectorXd zeroToOne = (1/totalArcLength)*(sRef - sRef0Vec);
+
+  // Create a zero to one vector including ref arc lengths & interp arc lengths (evenly spaced)
+  int nPtsTotal = nPts+nRef;
+  lastPosInterp_ = nPtsTotal - 1;
+
+  Eigen::VectorXd xxLinspace(nPts);
+  xxLinspace.fill(0.0);
+  xxLinspace.setLinSpaced(npts,0.0,1.0);
+  Eigen::VectorXd xxUnsorted(nPtsTotal);
+  xxUnsorted << xxLinspace, zeroToOne;
+  std::sort(xxUnsorted.data(),xxUnsorted.data+xxUnsorted.size());
+  Eigen::VectorXd xx = xxUnsorted.reverse(); //Rich's interpolation functions call for descending order
+
+  // List of return arc lengths in the original scaling/offset
+  Eigen::VectorXd xxSRef0Vec(nPtsTotal);
+  xxSRef0Vec.fill(sRef(0));
+  Eigen::VectorXd sInterp = totalArcLength*xx.reverse()+xxSRef0Vec;
+
+  // Interpolate to find list of return quaternions
+  Eigen::MatrixXd qInerp1 = quatInterp(qRef.rowwise().reverse(),zeroToOne.reverse(),xx);
+  Eigen::MatrixXd qInterp = qInterp1.rowwise().reverse();
+
+  // Interpolate to find list of return positions
+  std::vector<double> sVec;
+  sVec.resize(sRef.size());
+  Eigen::VectorXd::Map(&sVec[0],sRef.size()) = sRef;
+
+  Eigen::VectorXd X = poseDataRef.row(0); // interp x
+  std::vector<double> xVec;
+  xVec.resize(X.size());
+  Eigen::VectorXd::Map(&xVec[0],x.size()) = X;
+  tk::spline Sx;
+  Sx.set_points(sVec,xVec);
+  Eigen::VectorXd xInterp(nPtsTotal);
+  xInterp.fill(0);
+  for (int i = 0; i < nPtsTotal; i++)
+  {
+    xInterp(i) = Sx(sInterp(i));
+  }
+
+  Eigen::VectorXd Y = poseDataRef.row(1); // interp y
+  std::vector<double> yVec;
+  yVec.resize(Y.size());
+  Eigen::VectorXd::Map(&yVec[0],Y.size()) = Y;
+  tk::spline Sy;
+  Sy.set_points(sVec,yVec);
+  Eigen::VectorXd yInterp(nPtsTotal);
+  yInterp.fill(0);
+  for (int i = 0; i < nPtsTotal; i++)
+  {
+    yInterp(i) = Sy(sInterp(i));
+  }
+
+  Eigen::VectorXd Z = poseDataRef.row(2); // interp z
+  std::vector<double> zVec;
+  zVec.resize(Z.size());
+  Eigen::VectorXd::Map(&zVec[0],Z.size()) = Z;
+  tk::spline Sz;
+  Sz.set_points(sVec,zVec);
+  Eigen::VectorXd zInterp(nPtsTotal);
+  for (int i = 0; i < nPtsTotal; i++)
+  {
+    zInterp(i) = Sz(sInterp(i));
+  }
+
+  Eigen::MatrixXd pInterp(3,nPtsTotal);
+  pInterp.fill(0);
+  pInterp.row(0) = xInterp.transpose();
+  pInterp.row(1) = yInterp.transpose();
+  pInterp.row(2) = zInterp.transpose();
+
+  InterpRet interpResults;
+  interpResults.s = sInterp;
+  interpResults.p = pInterp;
+  interpResults.q = qInterp;
+
+  return interpResults;
+
+}
+
+void ResolvedRates::getCofactor(double A[6][6], double Temp[6][6], int P, int Q, int N)
 {
   int i = 0, j = 0;
 
@@ -137,7 +377,7 @@ void getCofactor(double A[6][6], double Temp[6][6], int P, int Q, int N)
     }
   }
 }
-double determinant(double A[6][6], int N)
+double ResolvedRates::determinant(double A[6][6], int N)
 {
   double D = 0; // Initialize result
 
@@ -162,7 +402,7 @@ double determinant(double A[6][6], int N)
 
   return D;
 }
-void adjoint(double A[6][6], double Adj[6][6])
+void ResolvedRates::adjoint(double A[6][6], double Adj[6][6])
 {
   // temp is used to store cofactors of A[][]
   int sign = 1;
@@ -185,7 +425,7 @@ void adjoint(double A[6][6], double Adj[6][6])
     }
   }
 }
-void inverse(double A[6][6], double Inverse[6][6])
+void ResolvedRates::inverse(double A[6][6], double Inverse[6][6])
 {
   // Find determinant of A[][]
   double det = determinant(A, 6);
@@ -203,9 +443,10 @@ void inverse(double A[6][6], double Inverse[6][6])
 }
 
 // Robotics Methods
-auto forwardKinematics(auto kin);
+auto ResolvedRates::callKinematics(auto kinCall); //TODO: write this
+auto ResolvedRates::forwardKinematics(auto kin);  //TOFO: write this
 
-Vector6d saturateJointVelocities(Vector6d DeltaQx, int NodeFreq)
+Vector6d ResolvedRates::saturateJointVelocities(Vector6d DeltaQx, int NodeFreq)
 {
   double max_rot_speed = 0.8; // rad/sec
   double max_trans_speed = 5.0; // mm/sec
@@ -238,7 +479,7 @@ Vector6d saturateJointVelocities(Vector6d DeltaQx, int NodeFreq)
 
   return delta_qx_sat;
 }
-Vector6d transformBetaToX(Vector6d Qbeta, Eigen::Vector3d L)
+Vector6d ResolvedRates::transformBetaToX(Vector6d Qbeta, Eigen::Vector3d L)
 {
   Vector6d qx;
   qx << Qbeta(0), Qbeta(1), Qbeta(2), 0, 0, 0;
@@ -247,7 +488,7 @@ Vector6d transformBetaToX(Vector6d Qbeta, Eigen::Vector3d L)
   qx(5) = L(2) + Qbeta(5);
   return qx;
 }
-Vector6d transformXToBeta(Vector6d Qx, Eigen::Vector3d L)
+Vector6d ResolvedRates::transformXToBeta(Vector6d Qx, Eigen::Vector3d L)
 {
   Vector6d qbeta;
   qbeta << Qx(0), Qx(1), Qx(2), 0, 0, 0;
@@ -256,13 +497,13 @@ Vector6d transformXToBeta(Vector6d Qx, Eigen::Vector3d L)
   qbeta(5) = Qx(5) - L(2);
   return qbeta;
 }
-double dhFunction(double Xmin, double Xmax, double X)
+double ResolvedRates::dhFunction(double Xmin, double Xmax, double X)
 {
   double dh = fabs((Xmax-Xmin)*(Xmax-Xmin)*(2*X-Xmax-Xmin)/(4*(Xmax-X)*(Xmax-X)*(X-Xmin)*(X-Xmin)));
 
   return dh;
 }
-Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d XIn, Eigen::Vector3d L)
+Eigen::Vector3d ResolvedRates::limitBetaValsSimple(Eigen::Vector3d XIn, Eigen::Vector3d L)
 {
   Eigen::Vector3d x = XIn;
   double epsilon = 0.5e-3;  // keep a 0.5 mm minimum margin
@@ -305,7 +546,7 @@ Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d XIn, Eigen::Vector3d L)
 
   return x;
 }
-Eigen::Vector3d limitBetaValsHardware(Eigen::Vector3d BetaIn)
+Eigen::Vector3d ResolvedRates::limitBetaValsHardware(Eigen::Vector3d BetaIn)
 {
   Eigen::Matrix<double,3,2> enc_lims;
   enc_lims << 50000, -145000, 	// inner
@@ -356,7 +597,7 @@ Eigen::Vector3d limitBetaValsHardware(Eigen::Vector3d BetaIn)
   beta << enc(0)/scale_trans + qstart.Beta(0), enc(1)/scale_trans + qstart.Beta(1), enc(2)/scale_trans + qstart.Beta(2);
   return beta;
 }
-Eigen::Vector3d limitBetaValsBimanualAlgorithm(Eigen::Vector3d BetaIn, Eigen::Vector3d LIn)
+Eigen::Vector3d ResolvedRates::limitBetaValsBimanualAlgorithm(Eigen::Vector3d BetaIn, Eigen::Vector3d LIn)
 {
   int nTubes = 3;
 
@@ -419,7 +660,7 @@ Eigen::Vector3d limitBetaValsBimanualAlgorithm(Eigen::Vector3d BetaIn, Eigen::Ve
   Beta << beta(1), beta(2), beta(3);
   return Beta;
 }
-double getVMag(const Eigen::VectorXd& E, double VMax, double VMin, double EMax, double EMin,
+double ResolvedRates::getVMag(const Eigen::VectorXd& E, double VMax, double VMin, double EMax, double EMin,
                double ConvergeRadius)
 {
   double vMag;
@@ -440,7 +681,7 @@ double getVMag(const Eigen::VectorXd& E, double VMax, double VMin, double EMax, 
 
   return vMag;
 }
-WeightingRet getWeightingMatrix(Eigen::Vector3d X,
+WeightingRet ResolvedRates::getWeightingMatrix(Eigen::Vector3d X,
                                 Eigen::Vector3d dhPrev,
                                 Eigen::Vector3d L, double lambda)
 {
@@ -486,7 +727,7 @@ WeightingRet getWeightingMatrix(Eigen::Vector3d X,
   output.dh = dh;
   return output;
 }
-Eigen::Vector3d scaleInputDeviceVelocity(Vector3d DesTwistDelta)
+Eigen::Vector3d ResolvedRates::scaleInputDeviceVelocity(Vector3d DesTwistDelta)
 {
   Vector3d scaledDesTwistDelta = DesTwistDelta;
 
