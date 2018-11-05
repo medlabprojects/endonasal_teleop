@@ -528,6 +528,8 @@ int main(int argc, char *argv[])
     typedef Tube< constant_fun< Vector<2>::type> >	T2_type;
     typedef Tube< constant_fun< Vector<2>::type> >	T3_type;
 
+    // NOTE: change so that tube dimensions are set by param server
+
     // Curvature of each tube
     constant_fun< Vector<2>::type > k_fun1( (1.0/63.5e-3)*Eigen::Vector2d::UnitX() );
     constant_fun< Vector<2>::type > k_fun2( (1.0/51.2e-3)*Eigen::Vector2d::UnitX() );
@@ -676,8 +678,71 @@ int main(int argc, char *argv[])
             ptip << posedata_out(0,lastPos), posedata_out(1,lastPos), posedata_out(2,lastPos);
             qtip << posedata_out(3,lastPos), posedata_out(4,lastPos), posedata_out(5,lastPos), posedata_out(6,lastPos);
 
+
+
+
+
+
+
+
+            // Patrick version
+
+            double *sdata;
+            double *pdensedata;
+            double *qdensedata;
+
+            int data_length = 16;
+            Eigen::Matrix<double,16,7> kin_out;
+
+
+            for (int i=0; i < 16; ++i)
+            {
+              Eigen::Vector3d pi = ret1.dense_state_output.at( i ).p;
+              Eigen::Vector4d qi = ret1.dense_state_output.at( i ).q;
+              kin_out.block<1,3>(i,0) = pi.transpose();
+              kin_out.block<1,4>(i,3) = qi.transpose();
+            }
+            /*
+            Eigen::MatrixXd posedata2(8,Npts);
+            for(int j = 0; j<Npts; j++){
+                Rjt = quat2rotm(quat.col(Npts-j-1));
+                Tjt = assembleTransformation(Rjt,pos.col(Npts-j-1));
+                Tjb = inverseTransform(Tbt)*Tjt;
+                tjb = collapseTransform(Tjb);
+                // Append it with a flag corresponding to which tube it is a member of. For now, all get a 1.
+                x.fill(0);
+                x.head<7>() = tjb;
+                x(7) = 1.0;
+                posedata.col(j) = x;
+            };
+
+            // Interpolate points along the backbone
+            int nInterp = 200;
+            interpRet interp_results = interpolateBackbone(s.reverse(),posedata,nInterp);
+            Eigen::MatrixXd posedata_out(8,nInterp+Npts);
+            posedata_out = Eigen::MatrixXd::Zero(8,nInterp+Npts);
+            Eigen::RowVectorXd ones(nInterp+Npts);
+            ones.fill(1);
+            Eigen::VectorXd s_out = interp_results.s;
+            posedata_out.topRows(3) = interp_results.p;
+            posedata_out.middleRows<4>(3) = interp_results.q;
+            posedata_out.bottomRows(1) = ones;
+            */
+
+
             ptip2 = ret1.pTip;
             qtip2 = ret1.qTip;
+
+
+
+
+
+
+
+
+
+
+
 
             // tip pose message for resolved rates
             kin_msg.p[0] = ptip[0];
@@ -712,7 +777,7 @@ int main(int argc, char *argv[])
             }
 
 
-            // "dense output" message for drawing the backbone
+            // "dense output" message for drawing the backbone           
             for(int j=0; j<=lastPos; j++)
             {
                 int p = 0;

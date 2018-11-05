@@ -288,7 +288,7 @@ int main(int argc, char** argv)
 
                 }
 
-                std::cout<<"published"<<std::endl;
+                //std::cout<<"published"<<std::endl;
                 shape_pub.publish(marker);
                 ID=ID+1;
                 if (ID==length)
