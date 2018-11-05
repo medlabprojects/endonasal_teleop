@@ -10,7 +10,7 @@
 #include "spline.h"
 
 #include <Eigen/Dense>
-#include <Eigen/Geometry>
+//#include <Eigen/Geometry>
 
 #include <ros/ros.h>
 #include <ros/console.h>
@@ -23,90 +23,94 @@
 #include <cmath>
 
 
-using namespace Eigen;
-using namespace CTR;
-using namespace CTR::Functions;
-using namespace std;
-using std::tuple;
+//using namespace Eigen;
+//using namespace CTR;
+//using namespace CTR::Functions;
+//using namespace std;
+//using std::tuple;
 
-typedef Eigen::Matrix<double,4,4> Matrix4d;
-typedef Eigen::Matrix<double,6,6> Matrix6d;
-typedef Eigen::Matrix<double,8,1> Vector8d;
-typedef Eigen::Matrix<double,7,1> Vector7d;
-typedef Eigen::Matrix<double,6,1> Vector6d;
-typedef tuple < Tube< constant_fun< Vector2d > >,
-                Tube< constant_fun< Vector2d > >,
-                Tube< constant_fun< Vector2d > > > Cannula3; // CTR3Robot architecture
-typedef constant_fun<Eigen::Vector2d> CurvFun;
-typedef std::tuple< Tube<CurvFun>, Tube<CurvFun> > CannulaT;
-typedef DeclareOptions< Option::ComputeJacobian, Option::ComputeGeometry, Option::ComputeStability, Option::ComputeCompliance>::options OType;
+namespace medlab {
+  //typedef Eigen::Matrix<double,4,4> Matrix4d;
+  typedef Eigen::Matrix<double,6,6> Matrix6d;
+  typedef Eigen::Matrix<double,8,1> Vector8d;
+  typedef Eigen::Matrix<double,7,1> Vector7d;
+  typedef Eigen::Matrix<double,6,1> Vector6d;
+  typedef tuple < Tube< constant_fun< Vector2d > >,
+                  Tube< constant_fun< Vector2d > >,
+                  Tube< constant_fun< Vector2d > > > Cannula3; // CTR3Robot architecture
+  typedef constant_fun<Eigen::Vector2d> CurvFun;
+  typedef std::tuple< Tube<CurvFun>, Tube<CurvFun>, Tube<CurvFun> > CannulaT;
+
+  typedef DeclareOptions< Option::ComputeJacobian, Option::ComputeGeometry, Option::ComputeStability, Option::ComputeCompliance>::options OType;
 
 
-struct CTR3RobotParams {  // These are used in defineRobot();
-  // Number of Tubes
-  typedef Tube< constant_fun< Vector<2>::type> > T1_type;
-  typedef Tube< constant_fun< Vector<2>::type> > T2_type;
-  typedef Tube< constant_fun< Vector<2>::type> > T3_type;
+class CTR3RobotParams
+{  // These are used in defineRobot();
 
-  // Material Properties
-  double E = 60E9;
-  double G = 60E9 / 2.0 / 1.33;
+    typedef Tube< constant_fun< Vector<2>::type> > TubeType;
 
-  // Tube 1 Geometry
-  double L1 = 222.5E-3;
-  double Lt1 = L1 - 42.2E-3;
-  double k1 = (1.0/63.5E-3);
-  double OD1 = 1.165E-3;
-  double ID1 = 1.067E-3;
+    // Material Properties
+    double E = 60E9;
+    double G = 60E9 / 2.0 / 1.33;
 
-  // Tube 2 Geometry
-  double L2 = 163E-3;
-  double Lt2 = L2 - 3E-3;
-  double k2 = (1.0/51.2E-3);
-  double OD2 = 2.0574E-3;
-  double ID2 = 1.6002E-3;
+    TubeType T1;
+    // Tube 1 Geometry
+    double L1 = 222.5E-3;
+    double Lt1 = L1 - 42.2E-3;
+    double k1 = (1.0/63.5E-3);
+    double OD1 = 1.165E-3;
+    double ID1 = 1.067E-3;
 
-  // Tube 3 Geometry
-  double L3 = 104.4E-3;
-  double Lt3 = L3 - 21.4E-3;
-  double k3 = (1.0/71.4E-3);
-  double OD3 = 2.540E-3;
-  double ID3 = 2.2479E-3;
+    TubeType T2;
+    // Tube 2 Geometry
+    double L2 = 163E-3;
+    double Lt2 = L2 - 3E-3;
+    double k2 = (1.0/51.2E-3);
+    double OD2 = 2.0574E-3;
+    double ID2 = 1.6002E-3;
+
+    TubeType T3;
+    // Tube 3 Geometry
+    double L3 = 104.4E-3;
+    double Lt3 = L3 - 21.4E-3;
+    double k3 = (1.0/71.4E-3);
+    double OD3 = 2.540E-3;
+    double ID3 = 2.2479E-3;
 };
 
-struct CTR3ModelStateVector { // format of the state vector fed into Kinematics_with_dense_output()
-  Eigen::Vector3d PsiL_;
-  Eigen::Vector3d Beta_;
-  Eigen::Vector3d Ftip_;
-  Eigen::Vector3d Ttip_;
-};
+  struct CTR3ModelStateVector { // format of the state vector fed into Kinematics_with_dense_output()
+    Eigen::Vector3d PsiL_;
+    Eigen::Vector3d Beta_;
+    Eigen::Vector3d Ftip_;
+    Eigen::Vector3d Ttip_;
+  };
 
-struct KinOut {  // used by ResolvedRates.init() -> Online Resolved Rates Loop
-  Eigen::Vector3d p_;
-  Eigen::Vector4d q_;
-  Eigen::Vector3d p2_;
-  Eigen::Vector4d q2_;
-  Eigen::Vector3d alpha_;
-  Eigen::Vector3d psiBeta_;
-  Matrix6d J1_;
-  Matrix6d J2_;
-  Matrix6d J3_;
-  Matrix6d J4_;
-  Matrix6d J5_;
-  Matrix6d J6_;
-};
+  struct KinOut {  // used by ResolvedRates.init() -> Online Resolved Rates Loop
+    Eigen::Vector3d p_;
+    Eigen::Vector4d q_;
+    Eigen::Vector3d p2_;
+    Eigen::Vector4d q2_;
+    Eigen::Vector3d alpha_;
+    Eigen::Vector3d psiBeta_;
+    medlab::Matrix6d J1_;
+    medlab::Matrix6d J2_;
+    medlab::Matrix6d J3_;
+    medlab::Matrix6d J4_;
+    medlab::Matrix6d J5_;
+    medlab::Matrix6d J6_;
+  };
 
-struct InterpRet { // Interpolated CTR3
-  Eigen::VectorXd s;
-  Eigen::MatrixXd p;
-  Eigen::MatrixXd q;
-};
+  struct InterpRet { // Interpolated CTR3
+    Eigen::VectorXd s;
+    Eigen::MatrixXd p;
+    Eigen::MatrixXd q;
+  };
 
-struct WeightingRet { // Joint Limits Weighting Matrix (Configuration Dependent)
-  Eigen::Matrix6d W;
-  Eigen::Vector3d dh;
-};
-
+  struct WeightingRet { // Joint Limits Weighting Matrix (Configuration Dependent)
+    Eigen::Matrix6d W;
+    Eigen::Vector3d dh;
+  };
+}
 
 class ResolvedRates
 {

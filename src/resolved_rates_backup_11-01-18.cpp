@@ -186,7 +186,6 @@ Eigen::Matrix3d quat2rotm(Eigen::Vector4d Quat)
   return R;
 }
 
-
 // Function to get cofactor of A[p][q] in temp[][]
 void getCofactor(double A[6][6], double temp[6][6], int p, int q, int n)
 {
@@ -286,7 +285,9 @@ void inverse(double A[6][6], double inverse[6][6])
   }
 }
 
-// 
+
+// ROBOTICS FUNCTION DEFINITIONS --------------------------------
+
 Vector6d saturateJointVelocities(Vector6d delta_qx, int node_freq)
 {
 
@@ -429,7 +430,6 @@ weightingRet getWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen
   output.dh = dh;
   return output;
 }
-
 
 Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d x_in, Eigen::Vector3d L)
 {
@@ -758,6 +758,7 @@ void zero_force()
   omniForce.z = 0.0;
 }
 
+// note: this works, but doesn't feel great due to slow rate -> do this on omninode side
 void setDampingForce(Vector3d V)
 {
 

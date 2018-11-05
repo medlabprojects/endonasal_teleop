@@ -1,6 +1,7 @@
 #include "resolvedrates.h"
+#include <Eigen/Dense>
 
-ResolvedRates::ResolvedRates()
+ResolvedRates::ResolvedRates():
 {
   // Robot Setup
   auto cannula = defineRobot(Params_); // TODO: save this to class
@@ -50,6 +51,7 @@ ResolvedRates::ResolvedRates()
   // Setup InputDevice
 
   // Probably want to plot initial pose of robot before init()
+  //ResolvedRates.init(); // or call from outside class?
 
 }
 
@@ -94,7 +96,7 @@ bool ResolvedRates::setInputDeviceTransform(Matrix4d TRegistration)
 
 // Math Methods
 double ResolvedRates::deg2rad (double degrees) {
-  return degrees * 4.0 * atan (1.0) / 180.0;
+  return degrees * 4.0 * std::atan (1.0) / 180.0;
 }
 double ResolvedRates::sgn(double x)
 {
@@ -412,11 +414,11 @@ auto ResolvedRates::defineRobot(CTR3RobotParams params)
   constant_fun< Vector<2>::type > k_fun2( (1.0/params.k2)*Eigen::Vector2d::UnitX() );
   constant_fun< Vector<2>::type > k_fun3( (1.0/params.k3)*Eigen::Vector2d::UnitX() );
 
-  T1_type T1 = make_annular_tube( params.L1, params.Lt1, params.OD1, params.ID1,
+  TubeType T1 = make_annular_tube( params.L1, params.Lt1, params.OD1, params.ID1,
                                   k_fun1, params.E, params.G);
-  T2_type T2 = make_annular_tube( params.L2, params.Lt2, params.OD2, params.ID2,
+  TubeType T2 = make_annular_tube( params.L2, params.Lt2, params.OD2, params.ID2,
                                   k_fun2, params.E, params.G);
-  T3_type T3 = make_annular_tube( params.L3, params.Lt3, params.OD3, params.ID3,
+  TubeType T3 = make_annular_tube( params.L3, params.Lt3, params.OD3, params.ID3,
                                   k_fun3, params.E, params.G);
 
   // cannula is input to Kinematics_with_dense_output()
@@ -441,7 +443,6 @@ auto ResolvedRates::callKinematics(CTR3ModelStateVector newStateVector)
     auto poseData = forwardKinematics(ret1); // TODO: save this to class
 
 }
-
 Eigen::MatrixXd ResolvedRates::forwardKinematics(auto kin)
 {
   int nPts = kin.arc_length_points.size();
