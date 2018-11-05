@@ -20,6 +20,7 @@ revised:  6/14/2018
 #include "Kinematics.h"
 #include "BasicFunctions.h"
 #include "Tube.h"
+#include "Utility.h"
 
 // Eigen headers
 #include <Eigen/Dense>
@@ -692,46 +693,74 @@ int main(int argc, char *argv[])
             double *qdensedata;
 
             int data_length = 16;
-            Eigen::Matrix<double,16,7> kin_out;
+            Eigen::Matrix<double,7,16> kin_out;
+            Eigen::Matrix<double,3,16> p_out;
+            Eigen::Matrix<double,4,16> q_out;
 
 
             for (int i=0; i < 16; ++i)
             {
-              Eigen::Vector3d pi = ret1.dense_state_output.at( i ).p;
-              Eigen::Vector4d qi = ret1.dense_state_output.at( i ).q;
-              kin_out.block<1,3>(i,0) = pi.transpose();
-              kin_out.block<1,4>(i,3) = qi.transpose();
+              Eigen::Vector3d pi = (-Utility::quaternion_rotate( Utility::quaternion_conj( ret1.dense_state_output.at( i ).q ), ret1.dense_state_output.at( i ).p ) + q.Beta( 0 )*Eigen::Vector3d::UnitZ());
+              Eigen::Vector4d qi = Utility::quaternion_conj( ret1.dense_state_output.at( i ).q );
+
+              //Eigen::Vector3d pi = ret1.dense_state_output.at( i ).p;
+              //Eigen::Vector4d qi = ret1.dense_state_output.at( i ).q;
+
+              kin_out.block<3,1>(0,i) = pi;
+              kin_out.block<4,1>(3,i) = qi;
+              p_out.col(i) = pi;
+              q_out.col(i) = qi;
             }
-            /*
-            Eigen::MatrixXd posedata2(8,Npts);
-            for(int j = 0; j<Npts; j++){
-                Rjt = quat2rotm(quat.col(Npts-j-1));
-                Tjt = assembleTransformation(Rjt,pos.col(Npts-j-1));
-                Tjb = inverseTransform(Tbt)*Tjt;
-                tjb = collapseTransform(Tjb);
+
+            std::cout << "kin_out: " << std::endl;
+            std::cout << kin_out.transpose() << std::endl;
+
+
+            Eigen::MatrixXd posedata2(8,16);
+            for(int j = 0; j<16; j++){
+                Eigen::Matrix3d Ri = quat2rotm(q_out.col(j));
+                Eigen::Matrix4d Ti = assembleTransformation(Ri,p_out.col(j));
+                //Tjb = inverseTransform(Tbt)*Tjt;
+                Eigen::Matrix<double,7,1> ti = collapseTransform(Ti);
                 // Append it with a flag corresponding to which tube it is a member of. For now, all get a 1.
-                x.fill(0);
-                x.head<7>() = tjb;
-                x(7) = 1.0;
-                posedata.col(j) = x;
+                Eigen::Matrix<double,8,1> xi;
+                xi.fill(0);
+                xi.head<7>() = ti;
+                xi(7) = 1.0;
+                posedata2.col(j) = xi;
             };
 
             // Interpolate points along the backbone
-            int nInterp = 200;
-            interpRet interp_results = interpolateBackbone(s.reverse(),posedata,nInterp);
-            Eigen::MatrixXd posedata_out(8,nInterp+Npts);
-            posedata_out = Eigen::MatrixXd::Zero(8,nInterp+Npts);
-            Eigen::RowVectorXd ones(nInterp+Npts);
-            ones.fill(1);
-            Eigen::VectorXd s_out = interp_results.s;
-            posedata_out.topRows(3) = interp_results.p;
-            posedata_out.middleRows<4>(3) = interp_results.q;
-            posedata_out.bottomRows(1) = ones;
-            */
+            interpRet interp_results2 = interpolateBackbone(s.reverse(),posedata2,200);
+            Eigen::MatrixXd posedata_out2(8,200+16);
+            posedata_out2 = Eigen::MatrixXd::Zero(8,200+16);
+            Eigen::RowVectorXd ones2(200+16);
+            ones2.fill(1);
+            Eigen::VectorXd s_out2 = interp_results2.s;
+            posedata_out2.topRows(3) = interp_results2.p;
+            posedata_out2.middleRows<4>(3) = interp_results2.q;
+            posedata_out2.bottomRows(1) = ones2;
 
+            //std::cout << "s_out2: " << std::endl;
+            //std::cout << s_out2 << std::endl;
+            //std::cout << "posedata_out2: " << std::endl;
+            //std::cout << posedata_out2 << std::endl;
+
+            Eigen::Vector3d ptip_interp;
+            ptip_interp << posedata_out(0,lastPos), posedata_out(1,lastPos), posedata_out(2,lastPos);
+            Eigen::Vector4d qtip_interp;
+            qtip_interp << posedata_out(3,lastPos), posedata_out(4,lastPos), posedata_out(5,lastPos), posedata_out(6,lastPos);
+
+            std::cout << "ptip_interp: " << ptip_interp.transpose() << std::endl;
+            std::cout << "qtip_interp: " << qtip_interp.transpose() << std::endl;
+
+            //std::cout << "ptip_interp: " << posedata_out(0,lastPos) << ", " << posedata_out(1,lastPos) << ", " posedata_out(2,lastPos) << std::endl;
+            //std::cout << "qtip_interp: " << posedata_out(3,lastPos) << ", " << posedata_out(4,lastPos) << ", " posedata_out(5,lastPos) << ", " posedata_out(6,lastPos) << std::endl;
 
             ptip2 = ret1.pTip;
             qtip2 = ret1.qTip;
+            std::cout << "ptip2: " << ptip2.transpose() << std::endl;
+            std::cout << "qtip2: " << qtip2.transpose() << std::endl;
 
 
 
