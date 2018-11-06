@@ -581,7 +581,7 @@ int main(int argc, char *argv[])
 
     // Declarations
     int Npts;
-    int nInterp = 200;
+    int nInterp = 50;
     double zeroIndex;
     Eigen::Vector3d pZero;
     Eigen::Vector4d qZero;

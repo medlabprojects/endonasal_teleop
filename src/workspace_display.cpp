@@ -108,8 +108,8 @@ int main(int argc, char** argv)
     //ros::Publisher omni_pub = n.advertise<std_msgs::Int32>("Omniforce", 1000);
 
     // define subscriber
-    ros::Subscriber sub = n.subscribe("needle_position", 1000, Callback);
-    ros::Subscriber omni_sub = n.subscribe("Omnipos",1000,omniCallback);
+    ros::Subscriber sub = n.subscribe("needle_position", 1, Callback);
+    ros::Subscriber omni_sub = n.subscribe("Omnipos",1,omniCallback);
     ros::Rate r(1500); //must be at least 1000Hz
 
     // Initialize the marker

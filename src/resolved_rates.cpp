@@ -802,14 +802,17 @@ int main(int argc, char *argv[])
 
   //Set the weighting for the motion tracking (in task space)
   double lambda_0 = 1.0;
-  Eigen::Matrix<double,3,3> m_W0 = Eigen::Matrix<double,3,3>::Zero();
+  Eigen::Matrix<double,6,6> m_W0 = Eigen::Matrix<double,6,6>::Zero();
   m_W0(0,0) = lambda_0*1e8;
   m_W0(1,1) = lambda_0*1e8;
   m_W0(2,2) = lambda_0*1e8;;
+  m_W0(3,3) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+  m_W0(4,4) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+  m_W0(5,5) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
 
   //Set the weighting for the damping (in actuator space)
-  double lambda = 0.1;
-  //double lambda = 1.0;
+  //double lambda = 0.1; // Bimanual value
+  double lambda = 0.5;
   double deg = 2;
   Eigen::Matrix<double,6,6> m_WD = Eigen::Matrix<double,6,6>::Zero();
   m_WD(0,0) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
@@ -1033,7 +1036,7 @@ int main(int argc, char *argv[])
           pubEncoderCommand2.publish(enc2);
         }
 
-        std::cout << "curOmni = " << curOmni << std::endl << std::endl;
+        //std::cout << "curOmni = " << curOmni << std::endl << std::endl;
 
 
         // if this is the first time step of clutch in, we need to save the robot pose & the omni pose
@@ -1091,7 +1094,31 @@ int main(int argc, char *argv[])
         robotDesTwist.head(3) = omniTwist_omniBaseCoords.head(3);
         robotDesTwist.tail(3) = omniTwist_omniPenCoords.tail(3);
         robotDesTwist = scale_factor*robotDesTwist;
-        //std::cout << "robotDesTwist = " << robotDesTwist.transpose() << std::endl << std::endl;
+
+        Eigen::Vector3d positionError = robotDesTwist.topRows<3>();
+        if (positionError.norm() > 1e-8)
+        {
+                double vMax = 0.0005; //0.0003
+                double vMin = 1e-6;
+                double eMax = 0.001; //0.002
+                double eMin = 1e-6;
+                double convergeRadius = 1e-8;
+                double vMag = getVmag(positionError, vMax, vMin, eMax, eMin, convergeRadius);
+                std::cout << "positionError: " << positionError.norm() << std::endl;
+                std::cout << "vMag: " << vMag << std::endl;
+                //xdot_des = positionError;
+                positionError = vMag*positionError / positionError.norm();
+        }
+        else
+        {
+                positionError = positionError;
+        }
+
+        Eigen::Matrix<double,6,1> xdot_des;
+        xdot_des.topRows<3>() = positionError;
+        xdot_des.bottomRows<3>() = robotDesTwist.bottomRows<3>();
+
+        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
 
         // Transformation from body Jacobian to hybrid
         Eigen::Matrix<double,6,6> RR = Eigen::Matrix<double,6,6>::Zero();
@@ -1141,9 +1168,9 @@ int main(int argc, char *argv[])
         //Eigen::Matrix<double,6,6> A = Jh.transpose()*W_tracking*Jh + W_damping;
         //Vector6d b = Jh.transpose()*W_tracking*robotDesTwist;
 
-        Eigen::Vector3d xdot_des = robotDesTwist.topRows<3>();
-        Eigen::Matrix<double,6,6> A = Jh_position.transpose()*m_W0*Jh_position + m_WD;
-        Vector6d b = Jh_position.transpose()*m_W0*xdot_des;
+        //Eigen::Vector3d xdot_des = robotDesTwist.topRows<3>();
+        Eigen::Matrix<double,6,6> A = Jmix.transpose()*m_W0*Jmix + m_WD;
+        Vector6d b = Jmix.transpose()*m_W0*xdot_des;
 
         //std::cout << "A = " << std::endl << A << std::endl << std::endl;
         //std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
