@@ -90,7 +90,7 @@ struct Configuration3
 {
   Eigen::Vector3d	PsiL;
   Eigen::Vector3d	Beta;
-  Eigen::Vector3d     Ftip;
+  Eigen::Vector3d       Ftip;
   Eigen::Vector3d	Ttip;
 };
 
@@ -112,10 +112,7 @@ double scale_trans_outer; // counts/m
 
 Eigen::Vector3d ptipcur; // use for continually updated message value
 Eigen::Vector4d qtipcur;
-Eigen::Vector3d ptipcur2; // use for continually updated message value
-Eigen::Vector4d qtipcur2;
 Eigen::Vector3d alphacur;
-Eigen::Vector3d psiBeta;
 Matrix6d Jcur;
 bool new_kin_msg = 0;
 double rosLoopRate = 100.0;
@@ -689,25 +686,10 @@ void kinCallback(const endonasal_teleop::kinout kinmsg)
   qtipcur[2] = tmpkin.q[2];
   qtipcur[3] = tmpkin.q[3];
 
-  // pull out position
-  ptipcur2[0] = tmpkin.p2[0];
-  ptipcur2[1] = tmpkin.p2[1];
-  ptipcur2[2] = tmpkin.p2[2];
-
-  // pull out orientation (quaternion)
-  qtipcur2[0] = tmpkin.q2[0];
-  qtipcur2[1] = tmpkin.q2[1];
-  qtipcur2[2] = tmpkin.q2[2];
-  qtipcur2[3] = tmpkin.q2[3];
-
   // pull out the base angles of the tubes (alpha in rad)
   alphacur[0] = tmpkin.alpha[0];
   alphacur[1] = tmpkin.alpha[1];
   alphacur[2] = tmpkin.alpha[2];
-  psiBeta[0] = tmpkin.psiBeta[0];
-  psiBeta[1] = tmpkin.psiBeta[1];
-  psiBeta[2] = tmpkin.psiBeta[2];
-
 
   // pull out Jacobian
   for(int i = 0; i<6; i++)
@@ -969,13 +951,11 @@ int main(int argc, char *argv[])
     for(int i=0; i<3; i++)
     {
       ptipcur(i) = get_starting_kin.response.p[i];
-      ptipcur2(i) = get_starting_kin.response.p2[i];
     }
 
     for(int i=0; i<4; i++)
     {
       qtipcur(i) = get_starting_kin.response.q[i];
-      qtipcur2(i) = get_starting_kin.response.q2[i];
     }
 
     for (int i=0; i<6; i++)
@@ -1001,8 +981,6 @@ int main(int argc, char *argv[])
   // Check that the kinematics got called once
   std::cout << "ptip at start = " << std::endl << ptipcur << std::endl << std::endl;
   std::cout << "qtip at start = " << std::endl << qtipcur << std::endl << std::endl;
-  std::cout << "ptip2 at start = " << std::endl << ptipcur2 << std::endl << std::endl;
-  std::cout << "qtip2 at start = " << std::endl << qtipcur2 << std::endl << std::endl;
   std::cout << "J at start = " << std::endl << Jcur << std::endl << std::endl;
 
   Eigen::Vector3d dhPrev;
@@ -1016,10 +994,9 @@ int main(int argc, char *argv[])
     {
       // take a "snapshot" of the current values from the kinematics and Omni for this loop iteration
       curOmni = omniPose;
-      ptip = ptipcur2;
-      qtip = qtipcur2;
-      //alpha = alphacur;
-      alpha = psiBeta;
+      ptip = ptipcur;
+      qtip = qtipcur;
+      alpha = alphacur;
       J = Jcur;
       Rtip = quat2rotm(qtip);
       robotTipFrame = assembleTransformation(Rtip,ptip);
@@ -1182,13 +1159,10 @@ int main(int argc, char *argv[])
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
         std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
-        //std::cout << "psiBeta = " << std::endl << psiBeta.transpose() << std::endl << std::endl;
         //std::cout << "alphacur = " << std::endl << alphacur.transpose() << std::endl << std::endl;
 
         //std::cout << "ptipcur = " << std::endl << ptipcur.transpose() << std::endl << std::endl;
-        //std::cout << "ptipcur2 = " << std::endl << ptipcur2.transpose() << std::endl << std::endl;
         //std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
-        //std::cout << "qtipcur2 = " << std::endl << qtipcur2.transpose() << std::endl << std::endl;
 
         std::cout << "----------------------------------------------------" << std::endl << std::endl;
 

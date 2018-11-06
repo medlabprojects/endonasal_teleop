@@ -52,7 +52,6 @@ revised:  6/14/2018
 #include "spline.h"
 #include <cmath>
 
-
 // NAMESPACES
 using namespace CTR;
 using namespace CTR::Functions;
@@ -98,8 +97,6 @@ bool startingConfigPublished;
 
 Eigen::Vector3d ptip;
 Eigen::Vector4d qtip;
-Eigen::Vector3d ptip2;
-Eigen::Vector4d qtip2;
 Matrix6d J;
 Matrix6d Jbody;
 
@@ -122,13 +119,11 @@ bool startingKin(endonasal_teleop::getStartingKin::Request &req, endonasal_teleo
     for (int i = 0; i <3; i++)
     {
         res.p[i] = ptip(i);
-        res.p2[i] = ptip2(i);
     }
 
     for (int i = 0; i <4; i++)
     {
         res.q[i] = qtip(i);
-        res.q2[i] = qtip2(i);
     }
 
     return true;
@@ -344,8 +339,12 @@ Eigen::Matrix<double,4,Eigen::Dynamic> quatInterp(Eigen::Matrix<double,4,Eigen::
     Eigen::MatrixXd quatInterpolated(4,N);
     quatInterpolated.fill(0);
 
-    for(int i=0; i<N; i+=1)
+    for(int i=0; i<N; i++)
     {
+        // setLinSpaced sometimes returns very small negative number (-1e-15) instead of 0
+        if(interpArcLengths(i) < 1e-10) {
+          interpArcLengths(i) = 0.0;
+        }
         if(interpArcLengths(i) < refArcLengths(count+1)){
             count = count+1;
         }
@@ -353,12 +352,10 @@ Eigen::Matrix<double,4,Eigen::Dynamic> quatInterp(Eigen::Matrix<double,4,Eigen::
         double t = (refArcLengths(count)-interpArcLengths(i))/L;
         quatInterpolated.col(i) = slerp(refQuat.col(count), refQuat.col(count+1), t);
     }
-
     return quatInterpolated;
 
 }
 
-int lastPos;
 interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_ref, int npts)
 {
     Eigen::Matrix<double,4,Eigen::Dynamic> q_ref;
@@ -366,18 +363,17 @@ interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_re
 
     // Create a zero to one list for ref arc lengths;
     int Nref = s_ref.size();
-    double totalArcLength = s_ref(Nref-1) - s_ref(0);
+    double totalArcLength = s_ref(0) - s_ref(Nref-1);
     Eigen::VectorXd sref0vec(Nref);
-    sref0vec.fill(s_ref(0));
+    sref0vec.fill(s_ref(Nref-1));
     Eigen::VectorXd zeroToOne = (1/totalArcLength)*(s_ref - sref0vec);
 
     // Create a zero to one vector including ref arc lengths & interp arc lengths (evenly spaced)
     int npts_total = npts+Nref;
-    lastPos = npts_total-1;
 
     Eigen::VectorXd xx_linspace(npts);
     xx_linspace.fill(0.0);
-    xx_linspace.setLinSpaced(npts,0.0,1.0);
+    xx_linspace.setLinSpaced(npts,1.0,0.0);
     Eigen::VectorXd xx_unsorted(npts_total);
     xx_unsorted << xx_linspace, zeroToOne;
     std::sort(xx_unsorted.data(),xx_unsorted.data()+xx_unsorted.size());
@@ -385,19 +381,20 @@ interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_re
 
     // List of return arc lengths in the original scaling/offset
     Eigen::VectorXd xx_sref0vec(npts_total);
-    xx_sref0vec.fill(s_ref(0));
-    Eigen::VectorXd s_interp = totalArcLength*xx.reverse()+xx_sref0vec;
+    xx_sref0vec.fill(s_ref(Nref-1));
+    Eigen::VectorXd s_interp = totalArcLength*xx+xx_sref0vec;
 
     // Interpolate to find list of return quaternions
-    Eigen::MatrixXd q_interp1 = quatInterp(q_ref.rowwise().reverse(),zeroToOne.reverse(),xx);
-    Eigen::MatrixXd q_interp = q_interp1.rowwise().reverse();
+    Eigen::MatrixXd q_interp = quatInterp(q_ref,zeroToOne,xx);
 
     // Interpolate to find list of return positions
+    Eigen::VectorXd s_interp_spline = s_interp.reverse(); // Spline requires ascending order
+
     std::vector<double> svec;
     svec.resize(s_ref.size());
-    Eigen::VectorXd::Map(&svec[0], s_ref.size()) = s_ref;
+    Eigen::VectorXd::Map(&svec[0], s_ref.size()) = s_ref.reverse();
 
-    Eigen::VectorXd x = posedata_ref.row(0);
+    Eigen::VectorXd x = posedata_ref.row(0).reverse();
     std::vector<double> xvec;
     xvec.resize(x.size());
     Eigen::VectorXd::Map(&xvec[0], x.size()) = x;
@@ -406,10 +403,11 @@ interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_re
     Eigen::VectorXd x_interp(npts_total);
     x_interp.fill(0);
     for (int i = 0; i < npts_total; i++){
-        x_interp(i) = Sx(s_interp(i));
+        x_interp(i) = Sx(s_interp_spline(i));
     }
+    x_interp = x_interp.reverse().eval();
 
-    Eigen::VectorXd y = posedata_ref.row(1);
+    Eigen::VectorXd y = posedata_ref.row(1).reverse();
     std::vector<double> yvec;
     yvec.resize(y.size());
     Eigen::VectorXd::Map(&yvec[0], y.size()) = y;
@@ -418,10 +416,11 @@ interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_re
     Eigen::VectorXd y_interp(npts_total);
     y_interp.fill(0);
     for (int i = 0; i < npts_total; i++){
-        y_interp(i) = Sy(s_interp(i));
+        y_interp(i) = Sy(s_interp_spline(i));
     }
+    y_interp = y_interp.reverse().eval();
 
-    Eigen::VectorXd z = posedata_ref.row(2);
+    Eigen::VectorXd z = posedata_ref.row(2).reverse();
     std::vector<double> zvec;
     zvec.resize(z.size());
     Eigen::VectorXd::Map(&zvec[0], z.size()) = z;
@@ -430,8 +429,9 @@ interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_re
     Eigen::VectorXd z_interp(npts_total);
     z_interp.fill(0);
     for (int i = 0; i < npts_total; i++){
-        z_interp(i) = Sz(s_interp(i));
+        z_interp(i) = Sz(s_interp_spline(i));
     }
+    z_interp = z_interp.reverse().eval();
 
     Eigen::MatrixXd p_interp(3,npts_total);
     p_interp.fill(0);
@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 
     typedef Tube< constant_fun< Vector<2>::type> >	T1_type;
     typedef Tube< constant_fun< Vector<2>::type> >	T2_type;
-    typedef Tube< constant_fun< Vector<2>::type> >	T3_type;
+    typedef Tube< constant_fun< Vector<2>::type> >	T3_type;    
 
     // NOTE: change so that tube dimensions are set by param server
 
@@ -562,7 +562,7 @@ int main(int argc, char *argv[])
     T3_type T3 = make_annular_tube( L3, Lt3, OD3, ID3, k_fun3, E, G );
 
     // Assemble cannula
-    auto cannula = std::make_tuple( T1, T2, T3 );
+    CannulaT cannula = std::make_tuple( T1, T2, T3 );
 
     // Cannula starting configuration (home position):
     Configuration3 qstart;
@@ -581,14 +581,14 @@ int main(int argc, char *argv[])
 
     // Declarations
     int Npts;
-    Eigen::Matrix3d Rbt;
-    Eigen::Vector3d pbt;
-    Eigen::Matrix4d Tbt;
-    Eigen::Matrix3d Rjt;
-    Eigen::Matrix4d Tjt;
-    Eigen::Matrix4d Tjb;
-    Eigen::Matrix<double,7,1> tjb;
-    Eigen::Matrix<double,8,1> x;
+    int nInterp = 200;
+    double zeroIndex;
+    Eigen::Vector3d pZero;
+    Eigen::Vector4d qZero;
+    Eigen::Matrix4d gZero;
+    Eigen::Matrix4d gStarZero;
+    Eigen::Matrix4d gStarL;
+
 
     while(ros::ok())
     {
@@ -610,62 +610,42 @@ int main(int argc, char *argv[])
 //            RR.topLeftCorner(3,3) = Rtip;
 //            J = RR*Jbody;
 
-            // Pick out arc length points
             Npts = ret1.arc_length_points.size();
             double* ptr = &ret1.arc_length_points[0];
             Eigen::Map<Eigen::VectorXd> s(ptr, Npts);
-	    Eigen::VectorXd s_abs(Npts);
-	    for (int i = 0; i<Npts; i++)
-	    {
-	        s_abs(i) = fabs(s(i));
-	    }
 
-            // Pick out pos & quat for each point expressed in the tip frame
-            Eigen::MatrixXd pos(3,Npts);
-            Eigen::MatrixXd quat(4,Npts);
-	    Eigen::MatrixXd psiangles(3,Npts);
-            for(int j = 0; j<Npts; j++){
-                double* p_ptr = &ret1.dense_state_output[j].p[0];
-                double* q_ptr = &ret1.dense_state_output[j].q[0];
-		double* psi_ptr = &ret1.dense_state_output[j].Psi[0];
-                Eigen::Map<Eigen::Vector3d> pj(p_ptr, 3);
-                Eigen::Map<Eigen::Vector4d> qj(q_ptr, 4);
-		Eigen::Map<Eigen::Vector3d> psij(psi_ptr,3);
+            Eigen::VectorXd zeroIndexVec;
+            int count = 0;
+            for (int i=0; i < s.size(); ++i) {
+                if (s(i) == 0) {
+                    zeroIndexVec.resize(count+1);
+                    zeroIndexVec(count) = (double) i;
+                    count ++;
+                }
+            }
+            zeroIndex = zeroIndexVec(count-1);
+            pZero = ret1.dense_state_output.at( zeroIndex ).p;
+            qZero = ret1.dense_state_output.at( zeroIndex ).q;
+            gZero = assembleTransformation(quat2rotm(qZero),pZero);
+            gStarZero = assembleTransformation(Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero());
+            gStarL = gStarZero*inverseTransform(gZero);
 
-                pos.col(j) = pj;
-                quat.col(j) = qj;
-		psiangles.col(j) = psij;		
-            };
-
-	    int baseplateindex;
-	    s_abs.minCoeff(&baseplateindex);
-
-	    Eigen::Vector3d base_rotations;
-	    base_rotations << psiangles(0,baseplateindex), psiangles(1,baseplateindex), psiangles(2,baseplateindex);
-
-            // Now assemble a transformation matrix for the frame at s = 0 relative to the tip frame
-            Rbt = quat2rotm(quat.col(Npts-1));  // orientation of the frame at s = 0 is same as at s = beta1;
-            pbt = pos.col(Npts-1) - q.Beta(0)*Eigen::Vector3d::UnitZ(); // position at s=0 is just shifted up in z by -beta1
-            Tbt = assembleTransformation(Rbt,pos.col(Npts-1));
-
-            // Now transform each of our frames along the backbone to be expressed in the last frame,
-            // then shift them up by Beta[0] in z so that they are relative to the front plate
             Eigen::MatrixXd posedata(8,Npts);
-            for(int j = 0; j<Npts; j++){
-                Rjt = quat2rotm(quat.col(Npts-j-1));
-                Tjt = assembleTransformation(Rjt,pos.col(Npts-j-1));
-                Tjb = inverseTransform(Tbt)*Tjt;
-                tjb = collapseTransform(Tjb);
-                // Append it with a flag corresponding to which tube it is a member of. For now, all get a 1.
-                x.fill(0);
-                x.head<7>() = tjb;
-                x(7) = 1.0;
-                posedata.col(j) = x;
-            };
+            for (int i=0; i < Npts; ++i)
+            {
+              Eigen::Vector3d pi = ret1.dense_state_output.at( i ).p;
+              Eigen::Vector4d qi = ret1.dense_state_output.at( i ).q;
+              Eigen::Matrix4d gi = assembleTransformation(quat2rotm(qi),pi);
+              Eigen::Matrix4d gStari = gStarL*gi;
+              Eigen::Matrix<double,8,1> xi;
+              xi.fill(0);
+              xi.head<7>() = collapseTransform(gStari);
+              xi(7) = 1.0;
+              posedata.col(i) = xi;
+            }
 
             // Interpolate points along the backbone
-            int nInterp = 200;
-            interpRet interp_results = interpolateBackbone(s.reverse(),posedata,nInterp);
+            interpRet interp_results = interpolateBackbone(s,posedata,nInterp);
             Eigen::MatrixXd posedata_out(8,nInterp+Npts);
             posedata_out = Eigen::MatrixXd::Zero(8,nInterp+Npts);
             Eigen::RowVectorXd ones(nInterp+Npts);
@@ -675,103 +655,8 @@ int main(int argc, char *argv[])
             posedata_out.middleRows<4>(3) = interp_results.q;
             posedata_out.bottomRows(1) = ones;
 
-            // tip pose
-            ptip << posedata_out(0,lastPos), posedata_out(1,lastPos), posedata_out(2,lastPos);
-            qtip << posedata_out(3,lastPos), posedata_out(4,lastPos), posedata_out(5,lastPos), posedata_out(6,lastPos);
-
-
-
-
-
-
-
-
-            // Patrick version
-
-            double *sdata;
-            double *pdensedata;
-            double *qdensedata;
-
-            int data_length = 16;
-            Eigen::Matrix<double,7,16> kin_out;
-            Eigen::Matrix<double,3,16> p_out;
-            Eigen::Matrix<double,4,16> q_out;
-
-
-            for (int i=0; i < 16; ++i)
-            {
-              Eigen::Vector3d pi = (-Utility::quaternion_rotate( Utility::quaternion_conj( ret1.dense_state_output.at( i ).q ), ret1.dense_state_output.at( i ).p ) + q.Beta( 0 )*Eigen::Vector3d::UnitZ());
-              Eigen::Vector4d qi = Utility::quaternion_conj( ret1.dense_state_output.at( i ).q );
-
-              //Eigen::Vector3d pi = ret1.dense_state_output.at( i ).p;
-              //Eigen::Vector4d qi = ret1.dense_state_output.at( i ).q;
-
-              kin_out.block<3,1>(0,i) = pi;
-              kin_out.block<4,1>(3,i) = qi;
-              p_out.col(i) = pi;
-              q_out.col(i) = qi;
-            }
-
-            std::cout << "kin_out: " << std::endl;
-            std::cout << kin_out.transpose() << std::endl;
-
-
-            Eigen::MatrixXd posedata2(8,16);
-            for(int j = 0; j<16; j++){
-                Eigen::Matrix3d Ri = quat2rotm(q_out.col(j));
-                Eigen::Matrix4d Ti = assembleTransformation(Ri,p_out.col(j));
-                //Tjb = inverseTransform(Tbt)*Tjt;
-                Eigen::Matrix<double,7,1> ti = collapseTransform(Ti);
-                // Append it with a flag corresponding to which tube it is a member of. For now, all get a 1.
-                Eigen::Matrix<double,8,1> xi;
-                xi.fill(0);
-                xi.head<7>() = ti;
-                xi(7) = 1.0;
-                posedata2.col(j) = xi;
-            };
-
-            // Interpolate points along the backbone
-            interpRet interp_results2 = interpolateBackbone(s.reverse(),posedata2,200);
-            Eigen::MatrixXd posedata_out2(8,200+16);
-            posedata_out2 = Eigen::MatrixXd::Zero(8,200+16);
-            Eigen::RowVectorXd ones2(200+16);
-            ones2.fill(1);
-            Eigen::VectorXd s_out2 = interp_results2.s;
-            posedata_out2.topRows(3) = interp_results2.p;
-            posedata_out2.middleRows<4>(3) = interp_results2.q;
-            posedata_out2.bottomRows(1) = ones2;
-
-            //std::cout << "s_out2: " << std::endl;
-            //std::cout << s_out2 << std::endl;
-            //std::cout << "posedata_out2: " << std::endl;
-            //std::cout << posedata_out2 << std::endl;
-
-            Eigen::Vector3d ptip_interp;
-            ptip_interp << posedata_out(0,lastPos), posedata_out(1,lastPos), posedata_out(2,lastPos);
-            Eigen::Vector4d qtip_interp;
-            qtip_interp << posedata_out(3,lastPos), posedata_out(4,lastPos), posedata_out(5,lastPos), posedata_out(6,lastPos);
-
-            std::cout << "ptip_interp: " << ptip_interp.transpose() << std::endl;
-            std::cout << "qtip_interp: " << qtip_interp.transpose() << std::endl;
-
-            //std::cout << "ptip_interp: " << posedata_out(0,lastPos) << ", " << posedata_out(1,lastPos) << ", " posedata_out(2,lastPos) << std::endl;
-            //std::cout << "qtip_interp: " << posedata_out(3,lastPos) << ", " << posedata_out(4,lastPos) << ", " posedata_out(5,lastPos) << ", " posedata_out(6,lastPos) << std::endl;
-
-            ptip2 = ret1.pTip;
-            qtip2 = ret1.qTip;
-            std::cout << "ptip2: " << ptip2.transpose() << std::endl;
-            std::cout << "qtip2: " << qtip2.transpose() << std::endl;
-
-
-
-
-
-
-
-
-
-
-
+            ptip = ret1.pTip;
+            qtip = ret1.qTip;
 
             // tip pose message for resolved rates
             kin_msg.p[0] = ptip[0];
@@ -781,19 +666,9 @@ int main(int argc, char *argv[])
             kin_msg.q[1] = qtip[1];
             kin_msg.q[2] = qtip[2];
             kin_msg.q[3] = qtip[3];
-            kin_msg.p2[0] = ptip2[0];
-            kin_msg.p2[1] = ptip2[1];
-            kin_msg.p2[2] = ptip2[2];
-            kin_msg.q2[0] = qtip2[0];
-            kin_msg.q2[1] = qtip2[1];
-            kin_msg.q2[2] = qtip2[2];
-            kin_msg.q2[3] = qtip2[3];
-	    kin_msg.alpha[0] = base_rotations[0];
-	    kin_msg.alpha[1] = base_rotations[1];
-	    kin_msg.alpha[2] = base_rotations[2];
-            kin_msg.psiBeta[0] = ret1.y_final.Psi[0];
-            kin_msg.psiBeta[1] = ret1.y_final.Psi[1];
-            kin_msg.psiBeta[2] = ret1.y_final.Psi[2];
+            kin_msg.alpha[0] = ret1.y_final.Psi[0];
+            kin_msg.alpha[1] = ret1.y_final.Psi[1];
+            kin_msg.alpha[2] = ret1.y_final.Psi[2];
 
             for(int i=0; i<6; i++)
             {
@@ -805,9 +680,8 @@ int main(int argc, char *argv[])
                 kin_msg.J6[i]=J(5,i);
             }
 
-
             // "dense output" message for drawing the backbone           
-            for(int j=0; j<=lastPos; j++)
+            for(int j=0; j<(nInterp+Npts); j++)
             {
                 int p = 0;
                 markers_msg.A1[j]=posedata_out(p,j);
@@ -833,6 +707,7 @@ int main(int argc, char *argv[])
                 }
 
             }
+
 
             // if this is the first kinematics pose computed,
             // advertise it via the server:
