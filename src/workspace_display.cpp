@@ -104,6 +104,7 @@ int main(int argc, char** argv)
     ros::Publisher seg_pub = n.advertise<visualization_msgs::Marker>("segment_visual",1000);
     uint32_t shape = visualization_msgs::Marker::CYLINDER;
 
+
     // TODO: if we want to publish to omniforce, we need a geometry_msg::Vector3 (not sure why we would be publishing from here..)
     //ros::Publisher omni_pub = n.advertise<std_msgs::Int32>("Omniforce", 1000);
 
@@ -163,6 +164,7 @@ int main(int argc, char** argv)
 
         if (new_message) // if you needle pose is updated, plot it
         {
+
             std::cout<<"prev"<<prevLength<<std::endl;
             std::cout<<"curr"<<length<<std::endl;
             //ROS_WARN("length %d",length);

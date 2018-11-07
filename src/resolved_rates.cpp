@@ -50,6 +50,7 @@ revised:  6/14/2018
 #include <endonasal_teleop/getStartingConfig.h>
 #include <endonasal_teleop/getStartingKin.h>
 #include <geometry_msgs/Vector3.h>
+#include "geometry_msgs/PoseStamped.h"
 
 #include "medlab_motor_control_board/McbEncoders.h"
 
@@ -65,6 +66,7 @@ revised:  6/14/2018
 #include <random>
 #include <vector>
 #include <cmath>
+
 
 // NAMESPACES
 using namespace rapidxml;
@@ -798,17 +800,37 @@ int main(int argc, char *argv[])
   W_tracking(4,4) = 0.1*lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
   W_tracking(5,5) = lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
 
-  std::cout << "W_tracking = " << std::endl << W_tracking << std::endl << std::endl;
-
+  // These values are from TeleopLeap (Bimanual)
+  /*
   //Set the weighting for the motion tracking (in task space)
   double lambda_0 = 1.0;
   Eigen::Matrix<double,6,6> m_W0 = Eigen::Matrix<double,6,6>::Zero();
-  m_W0(0,0) = lambda_0*1e8;
-  m_W0(1,1) = lambda_0*1e8;
-  m_W0(2,2) = lambda_0*1e8;;
+  m_W0(0,0) = lambda_0*1e6;
+  m_W0(1,1) = lambda_0*1e6;
+  m_W0(2,2) = lambda_0*1e6;
   m_W0(3,3) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
   m_W0(4,4) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
   m_W0(5,5) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+
+  //Set the weighting for the damping (in actuator space)
+  double lambda = 1.0;
+  double deg = 20;
+  Eigen::Matrix<double,6,6> m_WD = Eigen::Matrix<double,6,6>::Zero();
+  m_WD(0,0) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(1,1) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(2,2) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(3,3) = lambda*1e6;
+  m_WD(4,4) = lambda*1e6;
+  m_WD(5,5) = lambda*1e6;
+  */
+
+  // These values are from Teleop_IVP (position control only)
+  //Set the weighting for the motion tracking (in task space)
+  double lambda_0 = 1.0;
+  Eigen::Matrix<double,3,3> m_W0 = Eigen::Matrix<double,3,3>::Zero();
+  m_W0(0,0) = lambda_0*1e8;
+  m_W0(1,1) = lambda_0*1e8;
+  m_W0(2,2) = lambda_0*1e8;;
 
   //Set the weighting for the damping (in actuator space)
   //double lambda = 0.1; // Bimanual value
@@ -822,6 +844,8 @@ int main(int argc, char *argv[])
   m_WD(4,4) = lambda*5e8;
   m_WD(5,5) = lambda*5e8;
 
+  std::cout << "m_W0 = " << std::endl << m_W0 << std::endl << std::endl;
+  std::cout << "m_WD = " << std::endl << m_WD << std::endl << std::endl;
 
   // damping weighting matrix (actuator space):
   Matrix6d W_damping = Eigen::Matrix<double,6,6>::Zero();
@@ -832,8 +856,6 @@ int main(int argc, char *argv[])
   W_damping(3,3) = lambda_damping*1.0e6;
   W_damping(4,4) = lambda_damping*1.0e6;
   W_damping(5,5) = lambda_damping*1.0e6;
-
-  std::cout << "W_damping = " << std::endl << W_damping << std::endl << std::endl;
 
   // conversion from beta to x:
   Eigen::Matrix3d dbeta_dx;
@@ -877,6 +899,8 @@ int main(int argc, char *argv[])
   // MESSAGES TO BE SENT
   endonasal_teleop::config3 q_msg;
   std_msgs::Bool rrUpdateStatusMsg;
+  geometry_msgs::PoseStamped CTR_pose_msg;
+  CTR_pose_msg.header.frame_id = "world";
 
   // MISC.
   Eigen::Vector3d zerovec;
@@ -906,6 +930,7 @@ int main(int argc, char *argv[])
   ros::Publisher omniForcePub       = node.advertise<geometry_msgs::Vector3>("Omniforce",1000);
   ros::Publisher pubEncoderCommand1 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB1/encoder_command", 1); // EC13
   ros::Publisher pubEncoderCommand2 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB4/encoder_command", 1); // EC16
+  ros::Publisher CTR_pose_pub = node.advertise<geometry_msgs::PoseStamped>("CTR_pose",1000);
 
   //clients
   ros::ServiceClient startingKinClient = node.serviceClient<endonasal_teleop::getStartingKin>("get_starting_kin");
@@ -1056,6 +1081,8 @@ int main(int argc, char *argv[])
 
         // convert position units mm -> m
         omniDelta_omniPenCoords.block(0,3,3,1) = omniDelta_omniPenCoords.block(0,3,3,1)/1000.0;
+        //scale position through scaling ratio
+        omniDelta_omniPenCoords.block(0,3,3,1) = scale_factor*omniDelta_omniPenCoords.block(0,3,3,1);
 
         // convert to be expressed in the base coordinate frames
         Matrix4d RPrevOmni = assembleTransformation(prevOmni.block(0,0,3,3),zerovec);
@@ -1093,7 +1120,6 @@ int main(int argc, char *argv[])
 
         robotDesTwist.head(3) = omniTwist_omniBaseCoords.head(3);
         robotDesTwist.tail(3) = omniTwist_omniPenCoords.tail(3);
-        robotDesTwist = scale_factor*robotDesTwist;
 
         Eigen::Vector3d positionError = robotDesTwist.topRows<3>();
         if (positionError.norm() > 1e-8)
@@ -1109,16 +1135,28 @@ int main(int argc, char *argv[])
                 //xdot_des = positionError;
                 positionError = vMag*positionError / positionError.norm();
         }
-        else
-        {
-                positionError = positionError;
+
+        /*
+        double p_step_max = 0.002; //2 mm
+        double p_err = robotDesTwist.topRows<3>().norm();
+        double gain = 1.0;
+        if (p_err > p_step_max) {
+                gain = p_step_max / p_err;
         }
+        robotDesTwist.topRows<3>() *= gain;
 
-        Eigen::Matrix<double,6,1> xdot_des;
+        double angle_step_max = 0.05; //0.05 radians
+        double angle_err = robotDesTwist.bottomRows<3>().norm();
+        gain = 1.0;
+        if (angle_err > angle_step_max) {
+                gain = angle_step_max / angle_err;
+        }
+        robotDesTwist.bottomRows<3>()*=gain;
+        */
+
+        Eigen::Matrix<double,3,1> xdot_des;
         xdot_des.topRows<3>() = positionError;
-        xdot_des.bottomRows<3>() = robotDesTwist.bottomRows<3>();
-
-        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        //xdot_des.bottomRows<3>() = robotDesTwist.bottomRows<3>();
 
         // Transformation from body Jacobian to hybrid
         Eigen::Matrix<double,6,6> RR = Eigen::Matrix<double,6,6>::Zero();
@@ -1134,6 +1172,7 @@ int main(int argc, char *argv[])
         Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);
         Jmix.block(3,0,3,6) = J.block(3,0,3,6);
 
+        std::cout << "Jmix = " << std::endl << Jmix << std::endl << std::endl;
 
         Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
 
@@ -1169,15 +1208,15 @@ int main(int argc, char *argv[])
         //Vector6d b = Jh.transpose()*W_tracking*robotDesTwist;
 
         //Eigen::Vector3d xdot_des = robotDesTwist.topRows<3>();
-        Eigen::Matrix<double,6,6> A = Jmix.transpose()*m_W0*Jmix + m_WD;
-        Vector6d b = Jmix.transpose()*m_W0*xdot_des;
+        Eigen::Matrix<double,6,6> A = Jh_position.transpose()*m_W0*Jh_position + m_WD;
+        Vector6d b = Jh_position.transpose()*m_W0*xdot_des;
 
         //std::cout << "A = " << std::endl << A << std::endl << std::endl;
         //std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
 
         Vector6d delta_q = A.partialPivLu().solve(b);
-        //std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
-        //std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
+        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
         q_vec = q_vec + delta_q;
 
         Vector6d qx_vec = transformBetaToX(q_vec,L);
@@ -1186,7 +1225,6 @@ int main(int argc, char *argv[])
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
         std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
-        //std::cout << "alphacur = " << std::endl << alphacur.transpose() << std::endl << std::endl;
 
         //std::cout << "ptipcur = " << std::endl << ptipcur.transpose() << std::endl << std::endl;
         //std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
@@ -1214,10 +1252,20 @@ int main(int argc, char *argv[])
         zero_force();
       }
 
+      // Store tip pose in msg
+      CTR_pose_msg.pose.position.x = ptip(0);
+      CTR_pose_msg.pose.position.y = ptip(1);
+      CTR_pose_msg.pose.position.z = ptip(2);
+      CTR_pose_msg.pose.orientation.w = qtip(0);
+      CTR_pose_msg.pose.orientation.x = qtip(1);
+      CTR_pose_msg.pose.orientation.y = qtip(2);
+      CTR_pose_msg.pose.orientation.z = qtip(3);
+
       // publish
       jointValPub.publish(q_msg);
       rr_status_pub.publish(rrUpdateStatusMsg);
       omniForcePub.publish(omniForce);
+      CTR_pose_pub.publish(CTR_pose_msg);
 
 
     }

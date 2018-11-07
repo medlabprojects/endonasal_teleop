@@ -12,6 +12,6 @@
 
 <!-- <node pkg="rosserial_server" type="socket_node" name="rosserial_server" required="true" output = "screen"/> -->
 
-<node pkg="rviz" type="rviz" name="rviz" required="true"/>
+<node pkg="rviz" type="rviz" name="rviz"  args="-d $(find endonasal_teleop)/teleop.rviz" />
 
 </launch>
