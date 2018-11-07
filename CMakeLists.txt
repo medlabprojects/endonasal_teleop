@@ -119,7 +119,7 @@ catkin_package(
 #  LIBRARIES endonasal_teleop
 #  CATKIN_DEPENDS roscpp rospy tf
 #  DEPENDS system_lib
-  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime	
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime message_generation
 )
 
 #include(${QT_USE_FILE})
@@ -175,6 +175,7 @@ set(SRC
   src/needle_broadcaster.cpp
 #  src/needle_display.cpp
   src/resolved_rates.cpp
+  src/resolved_rates_position.cpp
   src/tf_broadcaster.cpp
 #  src/motorTest.cpp
 )
@@ -211,6 +212,7 @@ add_executable(needle_broadcaster src/needle_broadcaster.cpp)
 add_executable(kinematics src/kinematics.cpp)
 add_executable(workspace_display src/workspace_display.cpp)
 add_executable(resolved_rates src/resolved_rates.cpp)
+add_executable(resolved_rates_position src/resolved_rates_position.cpp)
 #add_executable(motorTest src/motorTest.cpp)
 #add_executable(main src/main.cpp)
 
@@ -225,11 +227,13 @@ target_link_libraries(needle_broadcaster ${catkin_LIBRARIES})
 target_link_libraries(kinematics ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(workspace_display ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(resolved_rates ${catkin_LIBRARIES} CannulaKinematics)
+target_link_libraries(resolved_rates_position ${catkin_LIBRARIES} CannulaKinematics)
 #target_link_libraries(main ${catkin_LIBRARIES} CannulaKinematics)
 
 target_link_libraries(kinematics Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(workspace_display Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(resolved_rates Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
+target_link_libraries(resolved_rates_position Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 #target_link_libraries(main Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 
 #############

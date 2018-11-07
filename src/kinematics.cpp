@@ -99,6 +99,7 @@ Eigen::Vector3d ptip;
 Eigen::Vector4d qtip;
 Matrix6d J;
 Matrix6d Jbody;
+double Stability;
 
 // SERVICE CALL FUNCTION DEFINITION ----------------
 bool startingKin(endonasal_teleop::getStartingKin::Request &req, endonasal_teleop::getStartingKin::Response &res)
@@ -125,6 +126,9 @@ bool startingKin(endonasal_teleop::getStartingKin::Request &req, endonasal_teleo
     {
         res.q[i] = qtip(i);
     }
+
+    res.Stability = Stability;
+
 
     return true;
 }
@@ -602,6 +606,7 @@ int main(int argc, char *argv[])
             // Pick out the body Jacobian relating actuation to tip position
             J = CTR::GetTipJacobianForTube1(ret1.y_final);
 
+            Stability = CTR::GetStability(ret1.y_final);
 
             // Transform it into the hybrid Jacobian:
 //            Eigen::Matrix3d Rtip = quat2rotm(ret1.qTip);
@@ -669,6 +674,7 @@ int main(int argc, char *argv[])
             kin_msg.alpha[0] = ret1.y_final.Psi[0];
             kin_msg.alpha[1] = ret1.y_final.Psi[1];
             kin_msg.alpha[2] = ret1.y_final.Psi[2];
+            kin_msg.Stability = Stability;
 
             for(int i=0; i<6; i++)
             {

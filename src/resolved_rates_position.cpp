@@ -115,7 +115,6 @@ double scale_trans_outer; // counts/m
 Eigen::Vector3d ptipcur; // use for continually updated message value
 Eigen::Vector4d qtipcur;
 Eigen::Vector3d alphacur;
-double Stability;
 Matrix6d Jcur;
 bool new_kin_msg = 0;
 double rosLoopRate = 100.0;
@@ -646,92 +645,6 @@ double getVmag(const Eigen::VectorXd& e, double vMax, double vMin, double eMax, 
   return vMag;
 }
 
-/*
-// FUNCTIONS FOR COMPUTING WEIGHTED DAMPED LEAST SQUARES
-void ControlLoop::getGradH()
-{
-        oldGradH = gradH;
-        gradH.block<3, 1>(0, 0) = Eigen::Vector3d::Zero(); // no joint limit on rotation
-
-        for (int i = 0; i < 3; i++)
-        {
-                double r_i = r(i);
-                double r_min = r_limits(i, 0);
-                double r_max = r_limits(i, 1);
-
-                double dH_dr = 0.25*((r_max - r_min)*(r_max - r_min)*(2 * r_i - r_max - r_min)) / ((r_max - r_i)*(r_max - r_i)*(r_i - r_min)*(r_i - r_min));
-                gradH(i + 3) = dH_dr;
-
-        }
-}
-
-void ControlLoop::getWJ()
-{
-        m_WJ = Eigen::Matrix<double, 6, 6>::Identity();
-
-        for (int i = 0; i < 6; i++)
-        {
-                m_WJ(i, i) = alphaJ*(1 + abs(gradH(i, 0)));
-        }
-}
-
-void ControlLoop::getdSdq()
-{
-
-        double rotationalStep = 0.05*M_PI / 180;
-        double translationalStep = 0.00001;
-        double step;
-
-        Eigen::Matrix<double, 6, 1> q_FD;
-        q_FD.block<3, 1>(0, 0) = q_kinematics.PsiL;
-        q_FD.block<3, 1>(3, 0) = q_kinematics.Beta;
-
-        Configuration3 q_kinematics_upper;
-        Configuration3 q_kinematics_lower;
-
-        for (int i = 0; i < 6; i++)
-        {
-                Eigen::Matrix<double, 6, 1> direction = Eigen::Matrix<double, 6, 1>::Zero();
-                direction(i) = 1.0;
-
-                if (i < 3)
-                {
-                        step = rotationalStep;
-                }
-                else {
-                        step = translationalStep;
-                }
-
-                Eigen::Matrix<double, 6, 1> q_FD_upper = q_FD + step*direction;
-                Eigen::Matrix<double, 6, 1> q_FD_lower = q_FD - step*direction;
-
-                q_kinematics_upper.PsiL = q_FD_upper.block<3, 1>(0, 0);
-                q_kinematics_upper.Beta = q_FD_upper.block<3, 1>(3, 0);
-                q_kinematics_upper.Ftip << 0.0, 0.0, 0.0;
-                q_kinematics_upper.Ttip << 0.0, 0.0, 0.0;
-                q_kinematics_lower.PsiL = q_FD_lower.block<3, 1>(0, 0);
-                q_kinematics_lower.Beta = q_FD_lower.block<3, 1>(3, 0);
-                q_kinematics_lower.Ftip << 0.0, 0.0, 0.0;
-                q_kinematics_lower.Ttip << 0.0, 0.0, 0.0;
-
-                auto ret_upper = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_upper, OType());
-                auto ret_lower = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_lower, OType());
-
-                double S_upper = GetStability(ret_upper.y_final);
-                double S_lower = GetStability(ret_lower.y_final);
-
-                dSdq(i) = (S_upper - S_lower) / (2 * step);
-        }
-}
-
-void ControlLoop::getWS()
-{
-        m_WS = (exp(1 / (S - stability_threshold)) - 1)*Eigen::Matrix<double, 6, 6>::Identity();
-}
-*/
-
-
-
 
 // SERVICE CALL FUNCTION DEFINITION ------------------------------
 
@@ -790,8 +703,6 @@ void kinCallback(const endonasal_teleop::kinout kinmsg)
     Jcur(4,i)=tmpkin.J5[i];
     Jcur(5,i)=tmpkin.J6[i];
   }
-
-  Stability = (double) tmpkin.Stability;
 
 }
 
@@ -879,8 +790,7 @@ int main(int argc, char *argv[])
   double lambda_damping = 2.0;    	// originally 5.0
   double lambda_jointlim = 20.0;  	// originally 10.0
 
-  // Previous version
-  /*
+
   // motion tracking weighting matrix (task space):
   Eigen::Matrix<double,6,6> W_tracking = Eigen::Matrix<double,6,6>::Zero();
   W_tracking(0,0) = lambda_tracking;
@@ -890,16 +800,6 @@ int main(int argc, char *argv[])
   W_tracking(4,4) = 0.1*lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
   W_tracking(5,5) = lambda_tracking*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
 
-  // damping weighting matrix (actuator space):
-  Matrix6d W_damping = Eigen::Matrix<double,6,6>::Zero();
-  double thetadeg = 2.0; // degrees to damp as much as 1 mm
-  W_damping(0,0) = lambda_damping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
-  W_damping(1,1) = lambda_damping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
-  W_damping(2,2) = lambda_damping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
-  W_damping(3,3) = lambda_damping*1.0e6;
-  W_damping(4,4) = lambda_damping*1.0e6;
-  W_damping(5,5) = lambda_damping*1.0e6;
-  */
   // These values are from TeleopLeap (Bimanual)
   /*
   //Set the weighting for the motion tracking (in task space)
@@ -924,28 +824,38 @@ int main(int argc, char *argv[])
   m_WD(5,5) = lambda*1e6;
   */
 
-  // These values are from Teleop_IVP
+  // These values are from Teleop_IVP (position control only)
   //Set the weighting for the motion tracking (in task space)
   double lambda_0 = 1.0;
-  Eigen::Matrix<double,6,6> W_tracking = Eigen::Matrix<double,6,6>::Zero();
-  W_tracking(0,0) = lambda_0*1e8;
-  W_tracking(1,1) = lambda_0*1e8;
-  W_tracking(2,2) = lambda_0*1e8;;
-  W_tracking(3,3) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-  W_tracking(4,4) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-  W_tracking(5,5) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0)*1e1;
+  Eigen::Matrix<double,3,3> m_W0 = Eigen::Matrix<double,3,3>::Zero();
+  m_W0(0,0) = lambda_0*1e8;
+  m_W0(1,1) = lambda_0*1e8;
+  m_W0(2,2) = lambda_0*1e8;;
 
   //Set the weighting for the damping (in actuator space)
   //double lambda = 0.1; // Bimanual value
   double lambda = 0.5;
   double deg = 2;
-  Eigen::Matrix<double,6,6> W_damping = Eigen::Matrix<double,6,6>::Zero();
-  W_damping(0,0) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
-  W_damping(1,1) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
-  W_damping(2,2) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
-  W_damping(3,3) = lambda*5e8;
-  W_damping(4,4) = lambda*5e8;
-  W_damping(5,5) = lambda*5e8;
+  Eigen::Matrix<double,6,6> m_WD = Eigen::Matrix<double,6,6>::Zero();
+  m_WD(0,0) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(1,1) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(2,2) = lambda*((180.0/M_PI/deg)*(180/M_PI/deg));
+  m_WD(3,3) = lambda*5e8;
+  m_WD(4,4) = lambda*5e8;
+  m_WD(5,5) = lambda*5e8;
+
+  std::cout << "m_W0 = " << std::endl << m_W0 << std::endl << std::endl;
+  std::cout << "m_WD = " << std::endl << m_WD << std::endl << std::endl;
+
+  // damping weighting matrix (actuator space):
+  Matrix6d W_damping = Eigen::Matrix<double,6,6>::Zero();
+  double thetadeg = 2.0; // degrees to damp as much as 1 mm
+  W_damping(0,0) = lambda_damping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
+  W_damping(1,1) = lambda_damping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
+  W_damping(2,2) = lambda_damping*(180.0/thetadeg/M_PI)*(180.0/thetadeg/M_PI);
+  W_damping(3,3) = lambda_damping*1.0e6;
+  W_damping(4,4) = lambda_damping*1.0e6;
+  W_damping(5,5) = lambda_damping*1.0e6;
 
   // conversion from beta to x:
   Eigen::Matrix3d dbeta_dx;
@@ -1086,8 +996,6 @@ int main(int argc, char *argv[])
       Jcur(5,i)=get_starting_kin.response.J6[i];
     }
 
-    Stability = get_starting_kin.response.Stability;
-
     new_kin_msg = 1;
 
     std::cout << "Starting pose and Jacobian received." << std::endl << std::endl;
@@ -1102,7 +1010,6 @@ int main(int argc, char *argv[])
   std::cout << "ptip at start = " << std::endl << ptipcur << std::endl << std::endl;
   std::cout << "qtip at start = " << std::endl << qtipcur << std::endl << std::endl;
   std::cout << "J at start = " << std::endl << Jcur << std::endl << std::endl;
-  std::cout << "Stability at start: " << std::endl << Stability << std::endl << std::endl;
 
   Eigen::Vector3d dhPrev;
   dhPrev.fill(0);
@@ -1155,8 +1062,6 @@ int main(int argc, char *argv[])
         }
 
         //std::cout << "curOmni = " << curOmni << std::endl << std::endl;
-
-        //std::cout << "Stability: " << Stability << std::endl;
 
 
         // if this is the first time step of clutch in, we need to save the robot pose & the omni pose
@@ -1249,9 +1154,9 @@ int main(int argc, char *argv[])
         robotDesTwist.bottomRows<3>()*=gain;
         */
 
-        Eigen::Matrix<double,6,1> xdot_des;
+        Eigen::Matrix<double,3,1> xdot_des;
         xdot_des.topRows<3>() = positionError;
-        xdot_des.bottomRows<3>() = robotDesTwist.bottomRows<3>();
+        //xdot_des.bottomRows<3>() = robotDesTwist.bottomRows<3>();
 
         // Transformation from body Jacobian to hybrid
         Eigen::Matrix<double,6,6> RR = Eigen::Matrix<double,6,6>::Zero();
@@ -1267,59 +1172,35 @@ int main(int argc, char *argv[])
         Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);
         Jmix.block(3,0,3,6) = J.block(3,0,3,6);
 
-        //Convert Jacobian using beta to r mapping
-        Eigen::Matrix<double, 6, 6> Jr = Eigen::Matrix<double, 6, 6>::Zero();
-        //convertJacobianBetaToR();
-
         std::cout << "Jmix = " << std::endl << Jmix << std::endl << std::endl;
 
-        //Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
-
-
-        //Set the weighting for the joint limits
-        double alphaJ = 20.0;
-        //alphaJ = 1.0;
-        Eigen::Matrix<double, 6, 1> gradH = Eigen::Matrix<double, 6, 1>::Zero();
-        Eigen::Matrix<double, 6, 6> m_WJ = Eigen::Matrix<double, 6, 6>::Zero();
-        //getGradH();
-        //getWJ();
-
-        //Set the weighting for the stability matrix
-        double alphaS = 10.0;
-        double stability_threshold = 0.0;
-
-        //Compute stability gradient and weighting matrix
-        Eigen::Matrix<double, 6, 1> dSdq = Eigen::Matrix<double, 6, 1>::Zero();
-        //getdSdq();
-        Eigen::Matrix<double, 6, 1> vS = alphaS*dSdq;
-        Eigen::Matrix<double, 6, 6> m_WS = Eigen::Matrix<double, 6, 6>::Zero();
-        //getWS();
+        Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
 
         // Transformation from qbeta to qx:
-        Eigen::Matrix<double,6,6> Jx = Jh*dqbeta_dqx;
+        //Eigen::Matrix<double,6,6> Jx = Jh*dqbeta_dqx;
         //Eigen::Matrix<double,3,6> Jp = Jx.block<3,6>(0,0);
         //std::cout << "Jx = " << std::endl << Jx << std::endl << std::endl;
-        Vector6d qx_vec = transformBetaToX(q_vec,L);
+        //Vector6d qx_vec = transformBetaToX(q_vec,L);
 
         // Joint limit avoidance weighting matrix
-        weightingRet Wout = getWeightingMatrix(qx_vec.tail(3),dhPrev,L,lambda_jointlim);
-        Eigen::Matrix<double,6,6> W_jointlim = Wout.W;
-        dhPrev = Wout.dh; // and save this dh value for next time
+        //weightingRet Wout = getWeightingMatrix(qx_vec.tail(3),dhPrev,L,lambda_jointlim);
+        //Eigen::Matrix<double,6,6> W_jointlim = Wout.W;
+        //dhPrev = Wout.dh; // and save this dh value for next time
 
         // Resolved rates update
 
         // with redundancy resolution:
-        Eigen::Matrix<double,6,6> A = Jx.transpose()*W_tracking*Jx + W_damping + W_jointlim;
-        Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
-        delta_qx = A.partialPivLu().solve(b);
+        //Eigen::Matrix<double,6,6> A = Jx.transpose()*W_tracking*Jx + W_damping + W_jointlim;
+        //Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
+        //delta_qx = A.partialPivLu().solve(b);
 
         // simple
         //delta_qx = Jx.partialPivLu().solve(robotDesTwist);
 
         //delta_qx = saturateJointVelocities(delta_qx, rosLoopRate); 	// Limit joint velocities
-        qx_vec = qx_vec + delta_qx;					// Update to new position
+        //qx_vec = qx_vec + delta_qx;					// Update to new position
         //qx_vec.tail(3) = limitBetaValsSimple(qx_vec.tail(3),L);		// Correct joint limit violations
-        q_vec = transformXToBeta(qx_vec,L); 	// Transform x back to beta
+        //q_vec = transformXToBeta(qx_vec,L); 	// Transform x back to beta
         //q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
 
 
@@ -1327,21 +1208,23 @@ int main(int argc, char *argv[])
         //Vector6d b = Jh.transpose()*W_tracking*robotDesTwist;
 
         //Eigen::Vector3d xdot_des = robotDesTwist.topRows<3>();
-        //Eigen::Matrix<double,6,6> A = Jmix.transpose()*m_W0*Jmix + m_WD + m_WJ;
-        //Vector6d b = Jmix.transpose()*m_W0*xdot_des;
+        Eigen::Matrix<double,6,6> A = Jh_position.transpose()*m_W0*Jh_position + m_WD;
+        Vector6d b = Jh_position.transpose()*m_W0*xdot_des;
 
-        //Vector6d delta_q = A.partialPivLu().solve(b);
-        //std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
-        //std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
-        //q_vec = q_vec + delta_q;
+        //std::cout << "A = " << std::endl << A << std::endl << std::endl;
+        //std::cout << "b = " << std::endl << b.transpose() << std::endl << std::endl;
 
-        //Vector6d qx_vec = transformBetaToX(q_vec,L);
-        //qx_vec.tail(3) = limitBetaValsSimple(qx_vec.tail(3),L);
-        //q_vec = transformXToBeta(qx_vec,L);
+        Vector6d delta_q = A.partialPivLu().solve(b);
+        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
+        q_vec = q_vec + delta_q;
+
+        Vector6d qx_vec = transformBetaToX(q_vec,L);
+        qx_vec.tail(3) = limitBetaValsSimple(qx_vec.tail(3),L);
+        q_vec = transformXToBeta(qx_vec,L);
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
         std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
-        std::cout << "qx_vec = " << std::endl << qx_vec.transpose() << std::endl << std::endl;
 
         //std::cout << "ptipcur = " << std::endl << ptipcur.transpose() << std::endl << std::endl;
         //std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;

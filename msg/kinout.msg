@@ -7,4 +7,5 @@ float64[6] J3
 float64[6] J4
 float64[6] J5
 float64[6] J6
+float64 Stability
 
