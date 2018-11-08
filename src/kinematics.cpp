@@ -675,11 +675,12 @@ int main(int argc, char *argv[])
             rotate_psiL(0,1) = -sin(q.PsiL(0));
             rotate_psiL(1,0) = sin(q.PsiL(0));
             rotate_psiL(1,1) = cos(q.PsiL(0));
-            std::cout << "PsiL(0) (deg): " << q.PsiL(0)*180/M_PI << std::endl;
-            std::cout << "rotate_psiL: " << std::endl << rotate_psiL << std::endl;
+            //std::cout << "PsiL(0) (deg): " << q.PsiL(0)*180/M_PI << std::endl;
+            //std::cout << "rotate_psiL: " << std::endl << rotate_psiL << std::endl;
             Rtip = RBishop*rotate_psiL;
-            std::cout << "Rtip: " << std::endl << Rtip << std::endl;
+            //std::cout << "Rtip: " << std::endl << Rtip << std::endl;
             qtip = rotm2quat(Rtip);
+
 
             // tip pose message for resolved rates
             kin_msg.p[0] = ptip[0];
@@ -689,6 +690,10 @@ int main(int argc, char *argv[])
             kin_msg.q[1] = qtip[1];
             kin_msg.q[2] = qtip[2];
             kin_msg.q[3] = qtip[3];
+            kin_msg.qb[0] = qBishop[0];
+            kin_msg.qb[1] = qBishop[1];
+            kin_msg.qb[2] = qBishop[2];
+            kin_msg.qb[3] = qBishop[3];
             kin_msg.alpha[0] = ret1.y_final.Psi[0];
             kin_msg.alpha[1] = ret1.y_final.Psi[1];
             kin_msg.alpha[2] = ret1.y_final.Psi[2];

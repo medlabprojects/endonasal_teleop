@@ -114,6 +114,7 @@ double scale_trans_outer; // counts/m
 
 Eigen::Vector3d ptipcur; // use for continually updated message value
 Eigen::Vector4d qtipcur;
+Eigen::Vector4d qBishopcur;
 Eigen::Vector3d alphacur;
 double Stability;
 Matrix6d Jcur;
@@ -171,23 +172,26 @@ Eigen::Matrix4d assembleTransformation(Eigen::Matrix3d Rot, Eigen::Vector3d Tran
 
 Eigen::Matrix3d quat2rotm(Eigen::Vector4d Quat)
 {
-  // Agrees with Matlab
-  // Quaternion order is wxyz
-  Eigen::Matrix3d R;
-  R.fill(0);
+    // Assuming convention q = [w x y z] (agrees w/Matlab)
+    Eigen::Matrix3d R;
+    R.fill(0);
 
-  R(0,0) = pow(Quat(0),2) + pow(Quat(1),2) - pow(Quat(2),2) - pow(Quat(3),2);
-  R(0,1) = 2*Quat(1)*Quat(2) - 2*Quat(0)*Quat(3);
-  R(0,2) = 2*Quat(1)*Quat(3) + 2*Quat(0)*Quat(2);
+    R(0,0) = 1 - 2*pow(Quat(2),2) - 2*pow(Quat(3),2);
+    //R(0,0) = pow(Quat(0),2) + pow(Quat(1),2) - pow(Quat(2),2) - pow(Quat(3),2);
+    R(0,1) = 2*Quat(1)*Quat(2) - 2*Quat(0)*Quat(3);
+    R(0,2) = 2*Quat(1)*Quat(3) + 2*Quat(0)*Quat(2);
 
-  R(1,0) = 2*Quat(1)*Quat(2) + 2*Quat(0)*Quat(3);
-  R(1,1) = pow(Quat(0),2) - pow(Quat(1),2) + pow(Quat(2),2) - pow(Quat(3),2);
-  R(1,2) = 2*Quat(2)*Quat(3) - 2*Quat(0)*Quat(1);
+    R(1,0) = 2*Quat(1)*Quat(2) + 2*Quat(0)*Quat(3);
+    //R(1,1) = pow(Quat(0),2) - pow(Quat(1),2) + pow(Quat(2),2) - pow(Quat(3),2);
+    R(1,1) = 1 - 2*pow(Quat(1),2) - 2*pow(Quat(3),2);
+    R(1,2) = 2*Quat(2)*Quat(3) - 2*Quat(0)*Quat(1);
 
-  R(2,0) = 2*Quat(1)*Quat(3) - 2*Quat(0)*Quat(2);
-  R(2,1) = 2*Quat(2)*Quat(3) + 2*Quat(0)*Quat(1);
-  R(2,2) = pow(Quat(0),2) - pow(Quat(1),2) - pow(Quat(2),2) + pow(Quat(3),2);
-  return R;
+    R(2,0) = 2*Quat(1)*Quat(3) - 2*Quat(0)*Quat(2);
+    R(2,1) = 2*Quat(2)*Quat(3) + 2*Quat(0)*Quat(1);
+    //R(2,2) = pow(Quat(0),2) - pow(Quat(1),2) - pow(Quat(2),2) + pow(Quat(3),2);
+    R(2,2) = 1 - 2*pow(Quat(1),2) - 2*pow(Quat(2),2);
+
+    return R;
 }
 
 
@@ -749,6 +753,12 @@ void kinCallback(const endonasal_teleop::kinout kinmsg)
   qtipcur[2] = tmpkin.q[2];
   qtipcur[3] = tmpkin.q[3];
 
+  // pull out orientation (quaternion)
+  qBishopcur[0] = tmpkin.qb[0];
+  qBishopcur[1] = tmpkin.qb[1];
+  qBishopcur[2] = tmpkin.qb[2];
+  qBishopcur[3] = tmpkin.qb[3];
+
   // pull out the base angles of the tubes (alpha in rad)
   alphacur[0] = tmpkin.alpha[0];
   alphacur[1] = tmpkin.alpha[1];
@@ -901,13 +911,13 @@ int main(int argc, char *argv[])
   // These values are from Teleop_IVP
   //Set the weighting for the motion tracking (in task space)
   double lambda_0 = 1.0;
-  Eigen::Matrix<double,6,6> W_tracking = Eigen::Matrix<double,6,6>::Zero();
+  Eigen::Matrix<double,4,4> W_tracking = Eigen::Matrix<double,4,4>::Zero();
   W_tracking(0,0) = lambda_0*1e8;
   W_tracking(1,1) = lambda_0*1e8;
   W_tracking(2,2) = lambda_0*1e8;;
-  W_tracking(3,3) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-  W_tracking(4,4) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-  W_tracking(5,5) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0)*1e1; // Increase to track roll
+  //W_tracking(3,3) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+  //W_tracking(4,4) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
+  W_tracking(3,3) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0); // Increase to track roll
 
   //Set the weighting for the damping (in actuator space)
   //double lambda = 0.1; // Bimanual value
@@ -935,7 +945,9 @@ int main(int argc, char *argv[])
   // ROBOT POSE VARIABLES
   Eigen::Vector3d ptip;
   Eigen::Vector4d qtip;
+  Eigen::Vector4d qBishop;
   Eigen::Matrix3d Rtip;
+  Eigen::Matrix3d RBishop;
   Eigen::Vector3d alpha;
   Vector6d q_vec;
   Vector6d qx_vec;
@@ -948,6 +960,7 @@ int main(int argc, char *argv[])
   Vector6d robotDesTwist;
   Eigen::Vector3d L;
   motorControlState = 0;
+  Eigen::Matrix<double,4,1> xdot_des;
 
   // OMNI POSE VARIABLES
   Matrix4d Tregs;
@@ -1093,9 +1106,11 @@ int main(int argc, char *argv[])
       curOmni = omniPose;
       ptip = ptipcur;
       qtip = qtipcur;
+      qBishop = qBishopcur;
       alpha = alphacur;
       J = Jcur;
       Rtip = quat2rotm(qtip);
+      RBishop = quat2rotm(qBishop);
       robotTipFrame = assembleTransformation(Rtip,ptip);
 
       if(buttonState==1) //must clutch in button for any motions to happen
@@ -1142,10 +1157,13 @@ int main(int argc, char *argv[])
           omniFrameAtClutch = omniPose;
           prevOmni = omniPose;
           //ROmniFrameAtClutch = assembleTransformation(omniFrameAtClutch.block(0,0,3,3),zerovec);
-          Tregs = assembleTransformation(Rtip.transpose(),zerovec);
+          Tregs = assembleTransformation(RBishop.transpose(),zerovec);
           //std::cout << "omniFrameAtClutch = " << std::endl << omniFrameAtClutch << std::endl << std::endl;
           justClutched = false; // next time, skip this step
         }
+
+        // Added this line...not sure if correct...Actually, Tregs isn't used anymore
+        Tregs = assembleTransformation(RBishop.transpose(),zerovec);
 
         // find change in omni position and orientation from the previous omni pose
         Matrix4d omniDelta_omniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
@@ -1223,26 +1241,25 @@ int main(int argc, char *argv[])
         robotDesTwist.bottomRows<3>()*=gain;
         */
 
-        Eigen::Matrix<double,6,1> xdot_des;
+
         xdot_des.topRows<3>() = positionError;
-        xdot_des.bottomRows<3>() = robotDesTwist.bottomRows<3>();
+        xdot_des.bottomRows<1>() = robotDesTwist.bottomRows<1>();
 
         // Transformation from body Jacobian to hybrid
         Eigen::Matrix<double,6,6> RR = Eigen::Matrix<double,6,6>::Zero();
-        RR.topLeftCorner<3,3>() = Rtip;
-        RR.bottomRightCorner<3,3>() = Rtip;
+        RR.topLeftCorner<3,3>() = RBishop;
+        RR.bottomRightCorner<3,3>() = RBishop;
         Eigen::Matrix<double,6,6> Jh = RR*J;
 
         //std::cout << "Jbody = " << std::endl << J << std::endl << std::endl;
         //std::cout << "Jhybrid = " << std::endl << Jh << std::endl << std::endl;
+        //std::cout << "RBishop = " << std::endl << RBishop << std::endl << std::endl;
+        //std::cout << "Rtip = " << std::endl << Rtip << std::endl << std::endl;
 
         // Now take body Jacobian for orientation + hybrid Jacobian for position to make mixed Jacobian
         Eigen::Matrix<double,6,6> Jmix;
         Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);
         Jmix.block(3,0,3,6) = J.block(3,0,3,6);
-
-        //Convert Jacobian using beta to r mapping
-        Eigen::Matrix<double, 6, 6> Jr = Eigen::Matrix<double, 6, 6>::Zero();
 
         //std::cout << "Jmix = " << std::endl << Jmix << std::endl << std::endl;
 
@@ -1254,8 +1271,6 @@ int main(int argc, char *argv[])
         //alphaJ = 1.0;
         Eigen::Matrix<double, 6, 1> gradH = Eigen::Matrix<double, 6, 1>::Zero();
         Eigen::Matrix<double, 6, 6> m_WJ = Eigen::Matrix<double, 6, 6>::Zero();
-        //getGradH();
-        //getWJ();
 
         //Set the weighting for the stability matrix
         double alphaS = 10.0;
@@ -1270,7 +1285,9 @@ int main(int argc, char *argv[])
 
         // Transformation from qbeta to qx:
         Eigen::Matrix<double,6,6> Jx = Jmix*dqbeta_dqx;
-        //Eigen::Matrix<double,3,6> Jp = Jx.block<3,6>(0,0);
+        Eigen::Matrix<double,4,6> Jp;
+        Jp.topRows<3>() = Jx.topRows<3>();
+        Jp.bottomRows<1>() = Jx.bottomRows<1>();
         //std::cout << "Jx = " << std::endl << Jx << std::endl << std::endl;
 
         // Joint limit avoidance weighting matrix
@@ -1282,13 +1299,14 @@ int main(int argc, char *argv[])
         // Resolved rates update
 
         // with redundancy resolution:
-        Eigen::Matrix<double,6,6> A = Jx.transpose()*W_tracking*Jx + W_damping + W_jointlim;
-        Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
+        Eigen::Matrix<double,6,6> A = Jp.transpose()*W_tracking*Jp + W_damping + W_jointlim;
+        Vector6d b = Jp.transpose()*W_tracking*xdot_des;
         delta_qx = A.partialPivLu().solve(b);
-        delta_qx = Eigen::Matrix<double,6,1>::Zero();
-        delta_qx(0) = 0.01;
-        delta_qx(1) = 0.01;
-        delta_qx(2) = 0.01;
+
+        //delta_qx = Eigen::Matrix<double,6,1>::Zero();
+        //delta_qx(0) = 0.01;
+        //delta_qx(1) = 0.01;
+        //delta_qx(2) = 0.01;
 
         // simple
         //delta_qx = Jx.partialPivLu().solve(robotDesTwist);
@@ -1308,7 +1326,7 @@ int main(int argc, char *argv[])
         //Vector6d b = Jmix.transpose()*m_W0*xdot_des;
 
         //Vector6d delta_q = A.partialPivLu().solve(b);
-        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        std::cout << "xdot_des = " << std::endl <<xdot_des.transpose() << std::endl << std::endl;
         //std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
         //q_vec = q_vec + delta_q;
 
@@ -1317,15 +1335,14 @@ int main(int argc, char *argv[])
         //q_vec = transformXToBeta(qx_vec,L);
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
-        std::cout << "delta_qx = " << std::endl << delta_qx.transpose() << std::endl << std::endl;
-        std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
-        std::cout << "qx_vec = " << std::endl << qx_vec.transpose() << std::endl << std::endl;
+        //std::cout << "delta_qx = " << std::endl << delta_qx.transpose() << std::endl << std::endl;
+        //std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
+        //std::cout << "qx_vec = " << std::endl << qx_vec.transpose() << std::endl << std::endl;
 
         //std::cout << "ptipcur = " << std::endl << ptipcur.transpose() << std::endl << std::endl;
-        std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
-        std::cout << "Rtip = " << std::endl << Rtip << std::endl << std::endl;
+        //std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
 
-        std::cout << "----------------------------------------------------" << std::endl << std::endl;
+        //std::cout << "----------------------------------------------------" << std::endl << std::endl;
 
         prevOmni = curOmni;
 
