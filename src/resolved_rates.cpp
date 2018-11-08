@@ -403,33 +403,33 @@ weightingRet getWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen
   double x1max = L(0)-L(1)-eps;
   double x1 = x(0);
   double dh1 = dhFunction(x1min,x1max,x1);
-  W(3,3) = (dh1 >= dhPrev(0))*(1+dh1) + (dh1 < dhPrev(0))*1;
-  //W(3,3) = 1+dh1;
-  W(3,3) *= lambda;
+  //W(3,3) = (dh1 >= dhPrev(0))*(1+dh1) + (dh1 < dhPrev(0))*1;
+  W(3,3) = 1+dh1;
+  //W(3,3) *= lambda;
 
   // x2:
   double x2min = eps;
   double x2max = L(1)-L(2)-eps;
   double x2 = x(1);
   double dh2 = dhFunction(x2min,x2max,x2);
-  W(4,4) = (dh2 >= dhPrev(1))*(1+dh2) + (dh2 < dhPrev(1))*1;
-  //W(4,4) = 1+dh2;
-  W(4,4) *= lambda;
+  //W(4,4) = (dh2 >= dhPrev(1))*(1+dh2) + (dh2 < dhPrev(1))*1;
+  W(4,4) = 1+dh2;
+  //W(4,4) *= lambda;
 
   // x3:
   double x3min = eps;
   double x3max = L(2)-eps;
   double x3 = x(2);
   double dh3 = dhFunction(x3min,x3max,x3);
-  W(5,5) = (dh3 >= dhPrev(2))*(1+dh3) + (dh3 < dhPrev(2))*1;
-  //W(5,5) = 1+dh3;
-  W(5,5) *= lambda;
+  //W(5,5) = (dh3 >= dhPrev(2))*(1+dh3) + (dh3 < dhPrev(2))*1;
+  W(5,5) = 1+dh3;
+  //W(5,5) *= lambda;
 
   Eigen::Vector3d dh;
   dh << dh1,dh2,dh3;
 
   weightingRet output;
-  output.W = W;
+  output.W = lambda*W;
   output.dh = dh;
   return output;
 }
@@ -647,33 +647,7 @@ double getVmag(const Eigen::VectorXd& e, double vMax, double vMin, double eMax, 
 }
 
 /*
-// FUNCTIONS FOR COMPUTING WEIGHTED DAMPED LEAST SQUARES
-void ControlLoop::getGradH()
-{
-        oldGradH = gradH;
-        gradH.block<3, 1>(0, 0) = Eigen::Vector3d::Zero(); // no joint limit on rotation
 
-        for (int i = 0; i < 3; i++)
-        {
-                double r_i = r(i);
-                double r_min = r_limits(i, 0);
-                double r_max = r_limits(i, 1);
-
-                double dH_dr = 0.25*((r_max - r_min)*(r_max - r_min)*(2 * r_i - r_max - r_min)) / ((r_max - r_i)*(r_max - r_i)*(r_i - r_min)*(r_i - r_min));
-                gradH(i + 3) = dH_dr;
-
-        }
-}
-
-void ControlLoop::getWJ()
-{
-        m_WJ = Eigen::Matrix<double, 6, 6>::Identity();
-
-        for (int i = 0; i < 6; i++)
-        {
-                m_WJ(i, i) = alphaJ*(1 + abs(gradH(i, 0)));
-        }
-}
 
 void ControlLoop::getdSdq()
 {
@@ -877,7 +851,7 @@ int main(int argc, char *argv[])
   double scale_factor = 0.30;		// originally 0.3
   double lambda_tracking = 1.0e5; 	// originally 1.0
   double lambda_damping = 2.0;    	// originally 5.0
-  double lambda_jointlim = 20.0;  	// originally 10.0
+  double lambda_jointlim = 1000.0;  	// originally 10.0
 
   // Previous version
   /*
@@ -933,7 +907,7 @@ int main(int argc, char *argv[])
   W_tracking(2,2) = lambda_0*1e8;;
   W_tracking(3,3) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
   W_tracking(4,4) = 0.1*lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0);
-  W_tracking(5,5) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0)*1e1;
+  W_tracking(5,5) = lambda_0*(180.0/M_PI/2.0)*(180.0/M_PI/2.0)*1e1; // Increase to track roll
 
   //Set the weighting for the damping (in actuator space)
   //double lambda = 0.1; // Bimanual value
@@ -964,6 +938,7 @@ int main(int argc, char *argv[])
   Eigen::Matrix3d Rtip;
   Eigen::Vector3d alpha;
   Vector6d q_vec;
+  Vector6d qx_vec;
   Vector6d delta_qx;
   Matrix4d omniFrameAtClutch;
   Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
@@ -1104,6 +1079,7 @@ int main(int argc, char *argv[])
   std::cout << "J at start = " << std::endl << Jcur << std::endl << std::endl;
   std::cout << "Stability at start: " << std::endl << Stability << std::endl << std::endl;
 
+  qx_vec = transformBetaToX(q_vec,L);
   Eigen::Vector3d dhPrev;
   dhPrev.fill(0);
 
@@ -1204,9 +1180,7 @@ int main(int argc, char *argv[])
         omniTwist_omniBaseCoords(5) = omniDelta_omniBaseCoords(1,0);	//w_z
 
         //std::cout << "omniTwist_omniPenCoords = " << std::endl << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
-        std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
-
-        std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
+        //std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
 
         //TODO: add this back for haptic damping (Max 10/31/18)
         //Eigen::Vector3d V = omniTwist_omniBaseCoords.head(3);  // is this the right velocity vector? we want n_hat (unit direction vector) & vel_magnitude
@@ -1225,8 +1199,8 @@ int main(int argc, char *argv[])
                 double eMin = 1e-6;
                 double convergeRadius = 1e-8;
                 double vMag = getVmag(positionError, vMax, vMin, eMax, eMin, convergeRadius);
-                std::cout << "positionError: " << positionError.norm() << std::endl;
-                std::cout << "vMag: " << vMag << std::endl;
+                //std::cout << "positionError: " << positionError.norm() << std::endl;
+                //std::cout << "vMag: " << vMag << std::endl;
                 //xdot_des = positionError;
                 positionError = vMag*positionError / positionError.norm();
         }
@@ -1269,9 +1243,8 @@ int main(int argc, char *argv[])
 
         //Convert Jacobian using beta to r mapping
         Eigen::Matrix<double, 6, 6> Jr = Eigen::Matrix<double, 6, 6>::Zero();
-        //convertJacobianBetaToR();
 
-        std::cout << "Jmix = " << std::endl << Jmix << std::endl << std::endl;
+        //std::cout << "Jmix = " << std::endl << Jmix << std::endl << std::endl;
 
         //Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
 
@@ -1296,15 +1269,15 @@ int main(int argc, char *argv[])
         //getWS();
 
         // Transformation from qbeta to qx:
-        Eigen::Matrix<double,6,6> Jx = Jh*dqbeta_dqx;
+        Eigen::Matrix<double,6,6> Jx = Jmix*dqbeta_dqx;
         //Eigen::Matrix<double,3,6> Jp = Jx.block<3,6>(0,0);
         //std::cout << "Jx = " << std::endl << Jx << std::endl << std::endl;
-        Vector6d qx_vec = transformBetaToX(q_vec,L);
 
         // Joint limit avoidance weighting matrix
         weightingRet Wout = getWeightingMatrix(qx_vec.tail(3),dhPrev,L,lambda_jointlim);
         Eigen::Matrix<double,6,6> W_jointlim = Wout.W;
         dhPrev = Wout.dh; // and save this dh value for next time
+        //std::cout << "W_jointlim = " << std::endl << W_jointlim << std::endl << std::endl;
 
         // Resolved rates update
 
@@ -1312,6 +1285,10 @@ int main(int argc, char *argv[])
         Eigen::Matrix<double,6,6> A = Jx.transpose()*W_tracking*Jx + W_damping + W_jointlim;
         Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
         delta_qx = A.partialPivLu().solve(b);
+        delta_qx = Eigen::Matrix<double,6,1>::Zero();
+        delta_qx(0) = 0.01;
+        delta_qx(1) = 0.01;
+        delta_qx(2) = 0.01;
 
         // simple
         //delta_qx = Jx.partialPivLu().solve(robotDesTwist);
@@ -1331,7 +1308,7 @@ int main(int argc, char *argv[])
         //Vector6d b = Jmix.transpose()*m_W0*xdot_des;
 
         //Vector6d delta_q = A.partialPivLu().solve(b);
-        //std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
+        std::cout << "xdot_des = " << std::endl << xdot_des.transpose() << std::endl << std::endl;
         //std::cout << "delta_q = " << std::endl << delta_q.transpose() << std::endl << std::endl;
         //q_vec = q_vec + delta_q;
 
@@ -1340,11 +1317,13 @@ int main(int argc, char *argv[])
         //q_vec = transformXToBeta(qx_vec,L);
 
 //        q_vec.tail(3) = limitBetaValsHardware(q_vec.tail(3));
+        std::cout << "delta_qx = " << std::endl << delta_qx.transpose() << std::endl << std::endl;
         std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl << std::endl;
         std::cout << "qx_vec = " << std::endl << qx_vec.transpose() << std::endl << std::endl;
 
         //std::cout << "ptipcur = " << std::endl << ptipcur.transpose() << std::endl << std::endl;
-        //std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
+        std::cout << "qtipcur = " << std::endl << qtipcur.transpose() << std::endl << std::endl;
+        std::cout << "Rtip = " << std::endl << Rtip << std::endl << std::endl;
 
         std::cout << "----------------------------------------------------" << std::endl << std::endl;
 

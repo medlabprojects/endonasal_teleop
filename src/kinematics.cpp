@@ -97,6 +97,9 @@ bool startingConfigPublished;
 
 Eigen::Vector3d ptip;
 Eigen::Vector4d qtip;
+Eigen::Vector4d qBishop;
+Eigen::Matrix<double,3,3> RBishop;
+Eigen::Matrix<double,3,3> Rtip;
 Matrix6d J;
 Matrix6d Jbody;
 double Stability;
@@ -191,17 +194,21 @@ Eigen::Matrix3d quat2rotm(Eigen::Vector4d Quat)
     Eigen::Matrix3d R;
     R.fill(0);
 
-    R(0,0) = pow(Quat(0),2) + pow(Quat(1),2) - pow(Quat(2),2) - pow(Quat(3),2);
+    R(0,0) = 1 - 2*pow(Quat(2),2) - 2*pow(Quat(3),2);
+    //R(0,0) = pow(Quat(0),2) + pow(Quat(1),2) - pow(Quat(2),2) - pow(Quat(3),2);
     R(0,1) = 2*Quat(1)*Quat(2) - 2*Quat(0)*Quat(3);
     R(0,2) = 2*Quat(1)*Quat(3) + 2*Quat(0)*Quat(2);
 
     R(1,0) = 2*Quat(1)*Quat(2) + 2*Quat(0)*Quat(3);
-    R(1,1) = pow(Quat(0),2) - pow(Quat(1),2) + pow(Quat(2),2) - pow(Quat(3),2);
+    //R(1,1) = pow(Quat(0),2) - pow(Quat(1),2) + pow(Quat(2),2) - pow(Quat(3),2);
+    R(1,1) = 1 - 2*pow(Quat(1),2) - 2*pow(Quat(3),2);
     R(1,2) = 2*Quat(2)*Quat(3) - 2*Quat(0)*Quat(1);
 
     R(2,0) = 2*Quat(1)*Quat(3) - 2*Quat(0)*Quat(2);
     R(2,1) = 2*Quat(2)*Quat(3) + 2*Quat(0)*Quat(1);
-    R(2,2) = pow(Quat(0),2) - pow(Quat(1),2) - pow(Quat(2),2) + pow(Quat(3),2);
+    //R(2,2) = pow(Quat(0),2) - pow(Quat(1),2) - pow(Quat(2),2) + pow(Quat(3),2);
+    R(2,2) = 1 - 2*pow(Quat(1),2) - 2*pow(Quat(2),2);
+
     return R;
 }
 
@@ -256,37 +263,37 @@ Eigen::Vector4d rotm2quat(Eigen::Matrix3d R)
     double trace = R(0,0) + R(1,1) + R(2,2);
     if (trace > 0)
     {
-        double s = 0.5*sqrt(trace+1.0);
-        Q(0) = s; //w eqn
-        Q(1) = (R(2,1)-R(1,2))/(4*s); //x eqn
-        Q(2) = (R(0,2)-R(2,0))/(4*s); //y eqn
-        Q(3) = (R(1,0)-R(0,1))/(4*s); //z eqn
+        double s = 2*sqrt(trace+1.0);
+        Q(0) = 0.25*s; //w eqn
+        Q(1) = (R(2,1)-R(1,2))/s; //x eqn
+        Q(2) = (R(0,2)-R(2,0))/s; //y eqn
+        Q(3) = (R(1,0)-R(0,1))/s; //z eqn
     }
     else
     {
        if(R(0,0)>R(1,1) && R(0,0)>R(2,2))
        {
-            double s = 0.5*sqrt(1.0 + R(0,0) - R(1,1) - R(2,2));
-            Q(0) = (R(2,1) - R(1,2))*s; //w eqn
-            Q(1) = s; //x eqn
-            Q(2) = (R(0,1)+R(1,0))*s; //y eqn
-            Q(3) = (R(0,2)+R(2,0))*s; //z eqn
+            double s = 2*sqrt(1.0 + R(0,0) - R(1,1) - R(2,2));
+            Q(0) = (R(2,1) - R(1,2))/s; //w eqn
+            Q(1) = 0.25*s; //x eqn
+            Q(2) = (R(0,1)+R(1,0))/s; //y eqn
+            Q(3) = (R(0,2)+R(2,0))/s; //z eqn
         }
        else if (R(1,1)>R(2,2))
        {
-            double s = 0.5*sqrt(1.0 + R(1,1) - R(0,0) - R(2,2));
-            Q(0) = (R(0,2)-R(2,0))*s; //w eqn
-            Q(1) = (R(0,1)+R(1,0))*s; //x eqn
-            Q(2) = s; //y eqn
-            Q(3) = (R(1,2)+R(2,1))*s; //z eqn
+            double s = 2*sqrt(1.0 + R(1,1) - R(0,0) - R(2,2));
+            Q(0) = (R(0,2)-R(2,0))/s; //w eqn
+            Q(1) = (R(0,1)+R(1,0))/s; //x eqn
+            Q(2) = 0.25*s; //y eqn
+            Q(3) = (R(1,2)+R(2,1))/s; //z eqn
         }
        else
        {
-            double s = 0.5*sqrt(1.0 + R(2,2) - R(0,0) - R(1,1));
-            Q(0) = (R(1,0)-R(0,1))*s; //w eqn
-            Q(1) = (R(0,2)+R(2,0))*s; //x eqn
-            Q(2) = (R(1,2)+R(2,1))*s; //y eqn
-            Q(3) = s; //z eqn
+            double s = 2*sqrt(1.0 + R(2,2) - R(0,0) - R(1,1));
+            Q(0) = (R(1,0)-R(0,1))/s; //w eqn
+            Q(1) = (R(0,2)+R(2,0))/s; //x eqn
+            Q(2) = (R(1,2)+R(2,1))/s; //y eqn
+            Q(3) = 0.25*s; //z eqn
         }
     }
 
@@ -661,7 +668,18 @@ int main(int argc, char *argv[])
             posedata_out.bottomRows(1) = ones;
 
             ptip = ret1.pTip;
-            qtip = ret1.qTip;
+            qBishop = ret1.qTip; // kinematics returns the Bishop frame
+            RBishop = quat2rotm(qBishop);
+            Eigen::Matrix<double,3,3> rotate_psiL = Eigen::Matrix<double,3,3>::Identity();
+            rotate_psiL(0,0) = cos(q.PsiL(0));
+            rotate_psiL(0,1) = -sin(q.PsiL(0));
+            rotate_psiL(1,0) = sin(q.PsiL(0));
+            rotate_psiL(1,1) = cos(q.PsiL(0));
+            std::cout << "PsiL(0) (deg): " << q.PsiL(0)*180/M_PI << std::endl;
+            std::cout << "rotate_psiL: " << std::endl << rotate_psiL << std::endl;
+            Rtip = RBishop*rotate_psiL;
+            std::cout << "Rtip: " << std::endl << Rtip << std::endl;
+            qtip = rotm2quat(Rtip);
 
             // tip pose message for resolved rates
             kin_msg.p[0] = ptip[0];
