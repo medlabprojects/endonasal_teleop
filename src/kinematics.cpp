@@ -128,6 +128,7 @@ bool startingKin(endonasal_teleop::getStartingKin::Request &req, endonasal_teleo
     for (int i = 0; i <4; i++)
     {
         res.q[i] = qtip(i);
+        res.qb[i] = qBishop(i);
     }
 
     res.Stability = Stability;
