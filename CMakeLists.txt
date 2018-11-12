@@ -177,6 +177,10 @@ set(SRC
   src/resolved_rates.cpp
   src/tf_broadcaster.cpp
 #  src/motorTest.cpp
+  src/CTR3Robot.cpp
+  src/ResolvedRatesController.cpp
+  src/RoboticsMath.cpp
+  src/endonasal_teleop.cpp
 )
 
 # Find includes in corresponding build directories
@@ -213,6 +217,7 @@ add_executable(workspace_display src/workspace_display.cpp)
 add_executable(resolved_rates src/resolved_rates.cpp)
 #add_executable(motorTest src/motorTest.cpp)
 #add_executable(main src/main.cpp)
+add_executable(endonasal_teleop src/endonasal_teleop.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -226,11 +231,14 @@ target_link_libraries(kinematics ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(workspace_display ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(resolved_rates ${catkin_LIBRARIES} CannulaKinematics)
 #target_link_libraries(main ${catkin_LIBRARIES} CannulaKinematics)
+target_link_libraries(endonasal_teleop ${catkin_LIBRARIES} CannulaKinematics)
 
 target_link_libraries(kinematics Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(workspace_display Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(resolved_rates Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 #target_link_libraries(main Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
+target_link_libraries(endonasal_teleop Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui
+${catkin_LIBRARIES})
 
 #############
 ## Install ##
