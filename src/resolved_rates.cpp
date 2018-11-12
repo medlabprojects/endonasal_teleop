@@ -1276,7 +1276,7 @@ int main(int argc, char *argv[])
         xdot_des.topRows<3>() = positionError;
         xdot_des.bottomRows<1>() = robotDesTwist.bottomRows<1>();
 
-        // Transformation from body Jacobian to hybrid
+        // Transformation from body Jacobian to hybrid --- NEED TO UNDERSTAND THIS BETTER
         RR = Eigen::Matrix<double,6,6>::Zero();
         RR.topLeftCorner<3,3>() = RBishop;
         RR.bottomRightCorner<3,3>() = RBishop;
@@ -1295,13 +1295,6 @@ int main(int argc, char *argv[])
         //std::cout << "Jmix = " << std::endl << Jmix << std::endl << std::endl;
 
         //Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
-
-
-        //Set the weighting for the joint limits
-        double alphaJ = 20.0;
-        //alphaJ = 1.0;
-        Eigen::Matrix<double, 6, 1> gradH = Eigen::Matrix<double, 6, 1>::Zero();
-        Eigen::Matrix<double, 6, 6> m_WJ = Eigen::Matrix<double, 6, 6>::Zero();
 
         //Set the weighting for the stability matrix
         double alphaS = 10.0;
@@ -1334,6 +1327,7 @@ int main(int argc, char *argv[])
         Vector6d b = Jp.transpose()*W_tracking*xdot_des;
         delta_qx = A.partialPivLu().solve(b);
 
+        // Spin all tubes in a circle
         //delta_qx = Eigen::Matrix<double,6,1>::Zero();
         //delta_qx(0) = 0.01;
         //delta_qx(1) = 0.01;
