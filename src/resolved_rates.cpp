@@ -390,10 +390,10 @@ double dhFunction(double xmin, double xmax, double x)
 struct weightingRet
 {
   Eigen::Matrix<double,6,6>   W;
-  Eigen::Vector3d             dh;
+  Eigen::VectorXd             dh;
 };
 
-weightingRet getWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda)
+weightingRet getDampingWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda)
 {
   Eigen::Matrix<double,6,6> W = MatrixXd::Identity(6,6);
 
@@ -435,6 +435,65 @@ weightingRet getWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen
   weightingRet output;
   output.W = lambda*W;
   output.dh = dh;
+  return output;
+}
+
+weightingRet getStabilityWeightingMatrix(Eigen::Matrix<double,6,1> q_vec, double S, double S_threshold, double alphaS)
+{
+  Eigen::Matrix<double,6,6> W = (exp(1 / (S - S_threshold)) - 1)*Eigen::Matrix<double, 6, 6>::Identity();
+  Eigen::Matrix<double,6,1> vS = Eigen::Matrix<double,6,1>::Zero();
+  Eigen::Matrix<double,6,1> dSdq = Eigen::Matrix<double,6,1>::Zero();
+
+  double rotationalStep = 0.05*M_PI / 180;
+  double translationalStep = 0.00001;
+  double step;
+
+  Eigen::Matrix<double, 6, 1> q_FD;
+  q_FD.block<3, 1>(0, 0) = q_vec.block<3,1>(0,0);
+  q_FD.block<3, 1>(3, 0) = q_vec.block<3,1>(3,0);
+
+  Configuration3 q_kinematics_upper;
+  Configuration3 q_kinematics_lower;
+
+  for (int i = 0; i < 6; i++)
+  {
+          Eigen::Matrix<double, 6, 1> direction = Eigen::Matrix<double, 6, 1>::Zero();
+          direction(i) = 1.0;
+
+          if (i < 3)
+          {
+                  step = rotationalStep;
+          }
+          else {
+                  step = translationalStep;
+          }
+
+          Eigen::Matrix<double, 6, 1> q_FD_upper = q_FD + step*direction;
+          Eigen::Matrix<double, 6, 1> q_FD_lower = q_FD - step*direction;
+
+          q_kinematics_upper.PsiL = q_FD_upper.block<3, 1>(0, 0);
+          q_kinematics_upper.Beta = q_FD_upper.block<3, 1>(3, 0);
+          q_kinematics_upper.Ftip << 0.0, 0.0, 0.0;
+          q_kinematics_upper.Ttip << 0.0, 0.0, 0.0;
+          q_kinematics_lower.PsiL = q_FD_lower.block<3, 1>(0, 0);
+          q_kinematics_lower.Beta = q_FD_lower.block<3, 1>(3, 0);
+          q_kinematics_lower.Ftip << 0.0, 0.0, 0.0;
+          q_kinematics_lower.Ttip << 0.0, 0.0, 0.0;
+
+          auto ret_upper = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_upper, OType());
+          auto ret_lower = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_lower, OType());
+
+          double S_upper = GetStability(ret_upper.y_final);
+          double S_lower = GetStability(ret_lower.y_final);
+
+          dSdq(i) = (S_upper - S_lower) / (2 * step);
+  }
+
+  vS = alphaS*dSdq;
+
+  weightingRet output;
+  output.W = W;
+  output.dh = vS;
   return output;
 }
 
@@ -649,67 +708,6 @@ double getVmag(const Eigen::VectorXd& e, double vMax, double vMin, double eMax, 
 
   return vMag;
 }
-
-/*
-
-
-void ControlLoop::getdSdq()
-{
-
-        double rotationalStep = 0.05*M_PI / 180;
-        double translationalStep = 0.00001;
-        double step;
-
-        Eigen::Matrix<double, 6, 1> q_FD;
-        q_FD.block<3, 1>(0, 0) = q_kinematics.PsiL;
-        q_FD.block<3, 1>(3, 0) = q_kinematics.Beta;
-
-        Configuration3 q_kinematics_upper;
-        Configuration3 q_kinematics_lower;
-
-        for (int i = 0; i < 6; i++)
-        {
-                Eigen::Matrix<double, 6, 1> direction = Eigen::Matrix<double, 6, 1>::Zero();
-                direction(i) = 1.0;
-
-                if (i < 3)
-                {
-                        step = rotationalStep;
-                }
-                else {
-                        step = translationalStep;
-                }
-
-                Eigen::Matrix<double, 6, 1> q_FD_upper = q_FD + step*direction;
-                Eigen::Matrix<double, 6, 1> q_FD_lower = q_FD - step*direction;
-
-                q_kinematics_upper.PsiL = q_FD_upper.block<3, 1>(0, 0);
-                q_kinematics_upper.Beta = q_FD_upper.block<3, 1>(3, 0);
-                q_kinematics_upper.Ftip << 0.0, 0.0, 0.0;
-                q_kinematics_upper.Ttip << 0.0, 0.0, 0.0;
-                q_kinematics_lower.PsiL = q_FD_lower.block<3, 1>(0, 0);
-                q_kinematics_lower.Beta = q_FD_lower.block<3, 1>(3, 0);
-                q_kinematics_lower.Ftip << 0.0, 0.0, 0.0;
-                q_kinematics_lower.Ttip << 0.0, 0.0, 0.0;
-
-                auto ret_upper = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_upper, OType());
-                auto ret_lower = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_lower, OType());
-
-                double S_upper = GetStability(ret_upper.y_final);
-                double S_lower = GetStability(ret_lower.y_final);
-
-                dSdq(i) = (S_upper - S_lower) / (2 * step);
-        }
-}
-
-void ControlLoop::getWS()
-{
-        m_WS = (exp(1 / (S - stability_threshold)) - 1)*Eigen::Matrix<double, 6, 6>::Identity();
-}
-*/
-
-
-
 
 // SERVICE CALL FUNCTION DEFINITION ------------------------------
 
@@ -1302,10 +1300,10 @@ int main(int argc, char *argv[])
 
         //Compute stability gradient and weighting matrix
         Eigen::Matrix<double, 6, 1> dSdq = Eigen::Matrix<double, 6, 1>::Zero();
-        //getdSdq();
-        Eigen::Matrix<double, 6, 1> vS = alphaS*dSdq;
-        Eigen::Matrix<double, 6, 6> m_WS = Eigen::Matrix<double, 6, 6>::Zero();
-        //getWS();
+        //dSdq = getdSdq();
+        //Eigen::Matrix<double, 6, 1> vS = alphaS*dSdq;
+        weightingRet WSout = getStabilityWeightingMatrix(q_vec, Stability, stability_threshold, alphaS);
+        Eigen::Matrix<double,6,6> W_stability = WSout.W;
 
         // Transformation from qbeta to qx:
         Eigen::Matrix<double,6,6> Jx = Jmix*dqbeta_dqx;
@@ -1315,9 +1313,9 @@ int main(int argc, char *argv[])
         std::cout << "Jp = " << std::endl << Jp << std::endl << std::endl;
 
         // Joint limit avoidance weighting matrix
-        weightingRet Wout = getWeightingMatrix(qx_vec.tail(3),dhPrev,L,lambda_jointlim);
-        Eigen::Matrix<double,6,6> W_jointlim = Wout.W;
-        dhPrev = Wout.dh; // and save this dh value for next time
+        weightingRet WDout = getDampingWeightingMatrix(qx_vec.tail(3),dhPrev,L,lambda_jointlim);
+        Eigen::Matrix<double,6,6> W_jointlim = WDout.W;
+        dhPrev = WDout.dh; // and save this dh value for next time
         //std::cout << "W_jointlim = " << std::endl << W_jointlim << std::endl << std::endl;
 
         // Resolved rates update
