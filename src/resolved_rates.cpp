@@ -88,6 +88,17 @@ typedef constant_fun<Eigen::Vector2d> CurvFun;
 typedef std::tuple< Tube<CurvFun>, Tube<CurvFun>, Tube<CurvFun> > CannulaT;
 typedef DeclareOptions< Option::ComputeJacobian, Option::ComputeGeometry, Option::ComputeStability, Option::ComputeCompliance>::options OType;
 
+constant_fun< Vector<2>::type > k_fun1( (1.0/63.5e-3)*Eigen::Vector2d::UnitX() );
+constant_fun< Vector<2>::type > k_fun2( (1.0/51.2e-3)*Eigen::Vector2d::UnitX() );
+constant_fun< Vector<2>::type > k_fun3( (1.0/71.4e-3)*Eigen::Vector2d::UnitX() );
+
+Tube<CurvFun> T1 = make_annular_tube(222.5e-3, 180.3e-3, 1.165e-3, 1.067e-3, k_fun1, 60e9, 60e9 / 2.0 / 1.33);
+Tube<CurvFun> T2 = make_annular_tube(163e-3, 126e-3, 2.057e-3, 1.6002e-3, k_fun2, 60e9, 60e9 / 2.0 / 1.33);
+Tube<CurvFun> T3 = make_annular_tube(104.4e-3, 83e-3, 2.540e-3, 2.2479e-3, k_fun3, 60e9, 60e9 / 2.0 / 1.33);
+
+Cannula3 cannula = std::make_tuple(T1, T2, T3);
+
+
 struct Configuration3
 {
   Eigen::Vector3d	PsiL;
@@ -480,8 +491,8 @@ weightingRet getStabilityWeightingMatrix(Eigen::Matrix<double,6,1> q_vec, double
           q_kinematics_lower.Ftip << 0.0, 0.0, 0.0;
           q_kinematics_lower.Ttip << 0.0, 0.0, 0.0;
 
-          auto ret_upper = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_upper, OType());
-          auto ret_lower = Kinematics_with_dense_output(control_loop_cannula, q_kinematics_lower, OType());
+          auto ret_upper = Kinematics_with_dense_output(cannula, q_kinematics_upper, OType());
+          auto ret_lower = Kinematics_with_dense_output(cannula, q_kinematics_lower, OType());
 
           double S_upper = GetStability(ret_upper.y_final);
           double S_lower = GetStability(ret_lower.y_final);
@@ -990,6 +1001,7 @@ int main(int argc, char *argv[])
   double logRmag;
   Vector6d delta_q;
   Eigen::Matrix<double,6,6> A;
+  Vector6d b;
   Eigen::Matrix<double,6,6> Jstar;
 
 /*******************************************************************************
@@ -1158,7 +1170,7 @@ int main(int argc, char *argv[])
 
         //std::cout << "curOmni = " << curOmni << std::endl << std::endl;
 
-        //std::cout << "Stability: " << Stability << std::endl;
+        std::cout << "Stability: " << Stability << std::endl;
 
 
         // if this is the first time step of clutch in, we need to save the robot pose & the omni pose
@@ -1195,18 +1207,18 @@ int main(int argc, char *argv[])
         Eigen::Matrix<double,3,3> R_c = prevOmni.block<3,3>(0,0);
         Eigen::Matrix<double,3,3> R_e = R_d*R_c.transpose();
         R_e = orthonormalize(R_e);
-        std::cout << "omniDelta_omniBaseCoords = " << std::endl << omniDelta_omniBaseCoords << std::endl << std::endl;
-        std::cout << "R_e = " << std::endl << R_e << std::endl << std::endl;
+        //std::cout << "omniDelta_omniBaseCoords = " << std::endl << omniDelta_omniBaseCoords << std::endl << std::endl;
+        //std::cout << "R_e = " << std::endl << R_e << std::endl << std::endl;
         double theta_e = acos((R_e(0,0)+R_e(1,1)+R_e(2,2)-1)/2);
         Eigen::Matrix<double,3,1> m_e;
         m_e(0) = (1/(2*sin(theta_e)))*(R_e(2,1)-R_e(1,2));
         m_e(1) = (1/(2*sin(theta_e)))*(R_e(0,2)-R_e(2,0));
         m_e(2) = (1/(2*sin(theta_e)))*(R_e(1,0)-R_e(0,1));
         Eigen::Matrix<double,3,1> omega = theta_e*m_e;
-        std::cout << "omega = " << std::endl << omega.transpose() << std::endl << std::endl;
+        //std::cout << "omega = " << std::endl << omega.transpose() << std::endl << std::endl;
 
         Eigen::Matrix<double,3,1> p_dot = (scale_factor/1000)*(curOmni.block<3,1>(0,3) - prevOmni.block<3,1>(0,3));
-        std::cout << "p_dot = " << std::endl << p_dot.transpose() << std::endl << std::endl;
+        //std::cout << "p_dot = " << std::endl << p_dot.transpose() << std::endl << std::endl;
 
         // WE WANT TO USE OMNI BASE COORDS FOR LINEAR VELOCITY AND PEN COORDS FOR ANGULAR VELOCITY
 
@@ -1226,8 +1238,8 @@ int main(int argc, char *argv[])
         omniTwist_omniBaseCoords(4) = omniDelta_omniBaseCoords(0,2);	//w_y
         omniTwist_omniBaseCoords(5) = omniDelta_omniBaseCoords(1,0);	//w_z
 
-        std::cout << "omniTwist_omniPenCoords = " << std::endl << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
-        std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
+        //std::cout << "omniTwist_omniPenCoords = " << std::endl << omniTwist_omniPenCoords.transpose() << std::endl << std::endl;
+        //std::cout << "omniTwist_omniBaseCoords = " << std::endl << omniTwist_omniBaseCoords.transpose() << std::endl << std::endl;
 
         //TODO: add this back for haptic damping (Max 10/31/18)
         //Eigen::Vector3d V = omniTwist_omniBaseCoords.head(3);  // is this the right velocity vector? we want n_hat (unit direction vector) & vel_magnitude
@@ -1280,8 +1292,8 @@ int main(int argc, char *argv[])
         RR.bottomRightCorner<3,3>() = RBishop;
         Jh = RR*J;
 
-        std::cout << "Jbody = " << std::endl << J << std::endl << std::endl;
-        std::cout << "Jhybrid = " << std::endl << Jh << std::endl << std::endl;
+        //std::cout << "Jbody = " << std::endl << J << std::endl << std::endl;
+        //std::cout << "Jhybrid = " << std::endl << Jh << std::endl << std::endl;
         //std::cout << "RBishop = " << std::endl << RBishop << std::endl << std::endl;
         //std::cout << "Rtip = " << std::endl << Rtip << std::endl << std::endl;
 
@@ -1294,23 +1306,14 @@ int main(int argc, char *argv[])
 
         //Eigen::Matrix<double, 3, 6> Jh_position = Jh.topRows<3>();
 
-        //Set the weighting for the stability matrix
-        double alphaS = 10.0;
-        double stability_threshold = 0.0;
 
-        //Compute stability gradient and weighting matrix
-        Eigen::Matrix<double, 6, 1> dSdq = Eigen::Matrix<double, 6, 1>::Zero();
-        //dSdq = getdSdq();
-        //Eigen::Matrix<double, 6, 1> vS = alphaS*dSdq;
-        weightingRet WSout = getStabilityWeightingMatrix(q_vec, Stability, stability_threshold, alphaS);
-        Eigen::Matrix<double,6,6> W_stability = WSout.W;
 
         // Transformation from qbeta to qx:
         Eigen::Matrix<double,6,6> Jx = Jmix*dqbeta_dqx;
         Eigen::Matrix<double,4,6> Jp;
         Jp.topRows<3>() = Jx.topRows<3>();
         Jp.bottomRows<1>() = Jx.bottomRows<1>();
-        std::cout << "Jp = " << std::endl << Jp << std::endl << std::endl;
+        //std::cout << "Jp = " << std::endl << Jp << std::endl << std::endl;
 
         // Joint limit avoidance weighting matrix
         weightingRet WDout = getDampingWeightingMatrix(qx_vec.tail(3),dhPrev,L,lambda_jointlim);
@@ -1318,11 +1321,31 @@ int main(int argc, char *argv[])
         dhPrev = WDout.dh; // and save this dh value for next time
         //std::cout << "W_jointlim = " << std::endl << W_jointlim << std::endl << std::endl;
 
-        // Resolved rates update
+        // Using instability avoidance?
+        bool instability_avoidance = true;
 
-        // with redundancy resolution:
-        Eigen::Matrix<double,6,6> A = Jp.transpose()*W_tracking*Jp + W_damping + W_jointlim;
-        Vector6d b = Jp.transpose()*W_tracking*xdot_des;
+        // Resolved rates update
+        if (instability_avoidance)
+        {
+          //Set the weighting for the stability matrix
+          double alphaS = 10.0;
+          double stability_threshold = 0.0;
+
+          //Compute stability gradient and weighting matrix
+          weightingRet WSout = getStabilityWeightingMatrix(q_vec, Stability, stability_threshold, alphaS);
+          Eigen::Matrix<double,6,6> W_stability = WSout.W;
+          Eigen::Matrix<double,6,1> vS = WSout.dh;
+
+          std::cout << "W_stability = " << std::endl << W_stability << std::endl << std::endl;
+          std::cout << "vS = " << std::endl << vS << std::endl << std::endl;
+
+          A = Jp.transpose()*W_tracking*Jp + W_damping + W_jointlim + W_stability;
+          b = Jp.transpose()*W_tracking*xdot_des + W_stability*vS;
+        }
+        else {
+          A = Jp.transpose()*W_tracking*Jp + W_damping + W_jointlim;
+          b = Jp.transpose()*W_tracking*xdot_des;
+        }
         delta_qx = A.partialPivLu().solve(b);
 
         // Spin all tubes in a circle
