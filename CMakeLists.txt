@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(endonasal_teleop)
 
-add_definitions(-std=c++11)
+#add_definitions(-std=c++11)
+add_definitions(-std=c++14)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -152,7 +153,7 @@ include_directories(
   /home/remireaa/Documents/LIBRARIES/RapidXML
   /home/remireaa/Documents/TeleopLeap
   /home/remireaa/Documents/Qt
-  /home/remireaa/catkin_ws/src
+#  /home/remireaa/catkin_ws/src
 #  /home/remireaa/my_library/ros_lib/tf
 )
 
@@ -164,7 +165,7 @@ link_directories(
   /home/remireaa/Documents/LIBRARIES/RapidXML
   /home/remireaa/Documents/TeleopLeap
   /home/remireaa/Documents/Qt
-  /home/remireaa/catkin_ws/src
+#  /home/remireaa/catkin_ws/src
 #  /home/remireaa/my_library/ros_lib/tf
 )
 

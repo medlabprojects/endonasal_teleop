@@ -1,8 +1,5 @@
 #pragma once
-#include <Eigen/Dense> // this includes Eigen/Geometry
-//#include <QDebug>
-//#include <QString>
-//#include <QVector>
+#include <Eigen/Dense>
 #include <vector>
 
 #include "Kinematics.h"
