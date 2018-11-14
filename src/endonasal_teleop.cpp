@@ -21,6 +21,7 @@
 #include "BasicFunctions.h"
 #include "Tube.h"
 
+#include "MedlabTypes.h"
 #include "RoboticsMath.h"
 #include "CTR3Robot.h"
 #include "ResolvedRatesController.h"
@@ -109,11 +110,8 @@ Matrix6d Jcur;
 bool new_kin_msg = 0;
 */
 
-RoboticsMath::Matrix4d omniPose;
-RoboticsMath::Matrix4d prevOmni;
-RoboticsMath::Matrix4d curOmni;
-RoboticsMath::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
-double rosLoopRate = 100.0;
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
 
 
 /*
@@ -186,6 +184,12 @@ void kinStatusCallback(const std_msgs::Bool &fkmMsg)
 	}
 }*/
 
+RoboticsMath::Matrix4d omniPose;
+RoboticsMath::Matrix4d prevOmni;
+RoboticsMath::Matrix4d curOmni;
+RoboticsMath::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
+double rosLoopRate = 100.0;
+
 geometry_msgs::Pose tempMsg;
 void omniCallback(const geometry_msgs::Pose &msg)
 {
@@ -231,7 +235,7 @@ int main(int argc, char *argv[])
 	/*******************************************************************************
 	INITIALIZE ROS NODE
 	********************************************************************************/
-	ros::init(argc, argv, "resolved_rates");
+        ros::init(argc, argv, "endonasal_teleop");
 	ros::NodeHandle node;
 	/*******************************************************************************
 	DECLARATIONS & CONSTANT DEFINITIONS
@@ -319,6 +323,25 @@ int main(int argc, char *argv[])
 //	Vector6d delta_q;
 //	Eigen::Matrix<double, 6, 6> A;
 //	Eigen::Matrix<double, 6, 6> Jstar;
+
+        medlab::CTR3RobotParams robot1Params;
+        robot1Params.E = 60E9;
+        robot1Params.G = 60E9 / 2.0 / 1.33;
+        robot1Params.L1 = 222.5E-3;
+        robot1Params.Lt1 = robot1Params.L1 - 42.2E-3;
+        robot1Params.OD1 = 1.165E-3;
+        robot1Params.ID1 = 1.067E-3;
+        robot1Params.L2 = 163E-3;
+        robot1Params.Lt2 = robot1Params.L1 - 38E-3;
+        robot1Params.OD2 = 2.0574E-3;
+        robot1Params.ID2 = 1.6002E-3;
+        robot1Params.L3 = 104.4E-3;
+        robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
+        robot1Params.OD3 = 2.540E-3;
+        robot1Params.ID3 = 2.248E-3;
+
+        //CTR3Robot robot1;
+        //robot1.SetCannula(robot1Params);
 
 	/*******************************************************************************
 	SET UP PUBLISHERS, SUBSCRIBERS, SERVICES & CLIENTS

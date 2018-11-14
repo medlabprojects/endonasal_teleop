@@ -172,15 +172,13 @@ link_directories(
 set(SRC
   src/kinematics.cpp
   src/workspace_display.cpp
-#  src/main.cpp
   src/needle_broadcaster.cpp
 #  src/needle_display.cpp
   src/resolved_rates.cpp
   src/tf_broadcaster.cpp
-#  src/motorTest.cpp
+
   src/CTR3Robot.cpp
   src/ResolvedRatesController.cpp
-  src/RoboticsMath.cpp
   src/endonasal_teleop.cpp
 )
 
@@ -208,7 +206,6 @@ find_package(Qt5PrintSupport)
 find_package(Qt5Core)
 find_package(Qt5Gui)
 
-
 ## Declare a C++ executable
 add_executable(tf_broadcaster src/tf_broadcaster.cpp)
 #add_executable(needle_display src/needle_display.cpp)
@@ -216,8 +213,7 @@ add_executable(needle_broadcaster src/needle_broadcaster.cpp)
 add_executable(kinematics src/kinematics.cpp)
 add_executable(workspace_display src/workspace_display.cpp)
 add_executable(resolved_rates src/resolved_rates.cpp)
-#add_executable(motorTest src/motorTest.cpp)
-#add_executable(main src/main.cpp)
+#add_executable(endonasal_teleop src/endonasal_teleop.cpp src/CTR3Robot.cpp)
 add_executable(endonasal_teleop src/endonasal_teleop.cpp)
 
 ## Add cmake target dependencies of the executable
@@ -234,10 +230,10 @@ target_link_libraries(resolved_rates ${catkin_LIBRARIES} CannulaKinematics)
 #target_link_libraries(main ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(endonasal_teleop ${catkin_LIBRARIES} CannulaKinematics)
 
+
 target_link_libraries(kinematics Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(workspace_display Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(resolved_rates Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
-#target_link_libraries(main Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 target_link_libraries(endonasal_teleop Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui
 ${catkin_LIBRARIES})
 

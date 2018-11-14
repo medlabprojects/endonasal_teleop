@@ -1,11 +1,24 @@
-#pragma once
 #include "CTR3Robot.h"
 
-CTR3Robot::CTR3Robot(medlab::CTR3RobotParams params)
-	: currCannulaParams_(params)		//TODO: look at & vs *
+
+CTR3Robot::CTR3Robot()
 {
-	// empty for now
 }
+
+//CTR3Robot::CTR3Robot(medlab::CTR3RobotParams params)
+//{
+//        const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / params.k1)*Eigen::Vector2d::UnitX());
+//        const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / params.k2)*Eigen::Vector2d::UnitX());
+//        const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / params.k3)*Eigen::Vector2d::UnitX());
+
+//        typedef CTR::Tube<CTR::Functions::constant_fun<CTR::Vector<2>::type> > TubeType;
+
+//        TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k_fun1, params.E, params.G);
+//        TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k_fun2, params.E, params.G);
+//        TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k_fun3, params.E, params.G);
+
+//        cannula_ = std::make_tuple(T1, T2, T3);
+//}
 
 CTR3Robot::~CTR3Robot()
 {
@@ -21,17 +34,8 @@ void CTR3Robot::init()
 	currStateVector_.beta_ << qHome_.tail(3);
 	currStateVector_.fTip_ = Eigen::Vector3d::Zero();
 	currStateVector_.tTip_ = Eigen::Vector3d::Zero();
-	currKinematics_ = callKinematicsWithDenseOutput(cannula_, currStateVector_, medlab::OType() ); // interpolation happens in here
-}
-
-bool CTR3Robot::SetCannulaName(std::string cannula) 
-{
-	cannulaName_ = cannula;
-	return true;
-}
-std::string CTR3Robot::GetCannulaName()
-{
-	return cannulaName_;
+        currQVec_ << qHome_;
+        currKinematics_ = callKinematicsWithDenseOutput(currQVec_); // interpolation happens in here & sets currInterpolatedBackbone_;
 }
 
 bool CTR3Robot::SetCannula(const medlab::CTR3RobotParams params)
@@ -88,10 +92,10 @@ medlab::InterpRet CTR3Robot::GetInterpolatedBackbone()
 medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(RoboticsMath::Vector6d newStateVector)
 {
 	medlab::CTR3ModelStateVector q;
-	q.psiL_ = newStateVector.head<3>;
-	q.beta_ = newStateVector.tail<3>;
-	q.fTip_ = Eigen::Vector3d::Zero();
-	q.tTip_ = Eigen::Vector3d::Zero();
+        q.psiL_ << newStateVector.head<3>;
+        q.beta_ << newStateVector.tail<3>;
+        q.fTip_ << Eigen::Vector3d::Zero();
+        q.tTip_ << Eigen::Vector3d::Zero();
 
 	auto ret1 = CTR::Kinematics_with_dense_output(cannula_, q, medlab::OType());
 
