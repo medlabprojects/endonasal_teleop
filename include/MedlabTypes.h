@@ -49,7 +49,7 @@ namespace medlab
                 double ID3;
         };
 
-        struct CTR3ModelStateVector { // format of the state vector fed into Kinematics_with_dense_output()
+        struct CTR3KinematicsInputVector { // format of the state vector fed into Kinematics_with_dense_output()
                 Eigen::Vector3d PsiL;
                 Eigen::Vector3d Beta;
                 Eigen::Vector3d Ftip;

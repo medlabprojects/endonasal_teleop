@@ -18,11 +18,16 @@ CTR3Robot::CTR3Robot(medlab::CTR3RobotParams params)
         CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / params.k2)*Eigen::Vector2d::UnitX());
         CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / params.k3)*Eigen::Vector2d::UnitX());
 
-        medlab::TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k_fun1, params.E, params.G);
-        medlab::TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k_fun2, params.E, params.G);
-        medlab::TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k_fun3, params.E, params.G);
+        k1_ = k_fun1;
+        k2_ = k_fun2;
+        k3_ = k_fun3;
 
-        auto cannula = std::make_tuple(T1, T2, T3);
+        medlab::TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k1_, params.E, params.G);
+        medlab::TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k2_, params.E, params.G);
+        medlab::TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k3_, params.E, params.G);
+
+        //curvFuns_ = std::make_tuple(k_fun1,k_fun2,k_fun3);
+        cannula_ = std::make_tuple(T1, T2, T3);
 }
 
 CTR3Robot::~CTR3Robot()
@@ -64,12 +69,12 @@ medlab::Cannula3 CTR3Robot::GetCannula()
 	return cannula_;
 }
 
-bool CTR3Robot::SetCurrKinematicsInput(medlab::CTR3ModelStateVector kinematicsInput)
+bool CTR3Robot::SetCurrKinematicsInput(medlab::CTR3KinematicsInputVector kinematicsInput)
 {
         currKinematicsInput_ = kinematicsInput;
 	return true;
 }
-medlab::CTR3ModelStateVector CTR3Robot::GetCurrKinematicsInput()
+medlab::CTR3KinematicsInputVector CTR3Robot::GetCurrKinematicsInput()
 {
         return currKinematicsInput_;
 }
@@ -94,7 +99,7 @@ medlab::InterpRet CTR3Robot::GetInterpolatedBackbone()
 	return currInterpolatedBackbone_;
 }
 
-medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3ModelStateVector newKinematicsInput)
+medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsInputVector newKinematicsInput)
 {
 //	medlab::CTR3ModelStateVector q;
 //        q.psiL_ = newKinematicsInput.head<3>;
