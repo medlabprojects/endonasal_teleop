@@ -50,10 +50,10 @@ namespace medlab
         };
 
         struct CTR3ModelStateVector { // format of the state vector fed into Kinematics_with_dense_output()
-                Eigen::Vector3d psiL_;
-                Eigen::Vector3d beta_;
-                Eigen::Vector3d fTip_;
-                Eigen::Vector3d tTip_;
+                Eigen::Vector3d PsiL;
+                Eigen::Vector3d Beta;
+                Eigen::Vector3d Ftip;
+                Eigen::Vector3d Ttip;
         };
 
         struct InterpRet {      // Interpolated CTR3 Backbone
@@ -68,11 +68,11 @@ namespace medlab
         };
 
         struct KinOut {  // used by ResolvedRates.init() -> Online Resolved Rates Loop
-                Eigen::Vector3d p_;
-                Eigen::Vector4d q_;
-                Eigen::Vector3d alpha_;
-                Eigen::Vector3d psiBeta_;
-                RoboticsMath::Matrix6d jBody_;		// Body Jacobian
+                Eigen::Vector3d p;
+                Eigen::Vector4d q;
+                Eigen::Vector3d alpha;
+                Eigen::Vector3d psiBeta;
+                RoboticsMath::Matrix6d jBody;		// Body Jacobian
         };
 
 }

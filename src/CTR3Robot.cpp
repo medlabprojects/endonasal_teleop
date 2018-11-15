@@ -3,22 +3,23 @@
 
 CTR3Robot::CTR3Robot()
 {
+
 }
 
-//CTR3Robot::CTR3Robot(medlab::CTR3RobotParams params)
-//{
-//        const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / params.k1)*Eigen::Vector2d::UnitX());
-//        const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / params.k2)*Eigen::Vector2d::UnitX());
-//        const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / params.k3)*Eigen::Vector2d::UnitX());
+CTR3Robot::CTR3Robot(medlab::CTR3RobotParams params)
+{
+        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / params.k1)*Eigen::Vector2d::UnitX());
+        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / params.k2)*Eigen::Vector2d::UnitX());
+        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / params.k3)*Eigen::Vector2d::UnitX());
 
-//        typedef CTR::Tube<CTR::Functions::constant_fun<CTR::Vector<2>::type> > TubeType;
+        typedef CTR::Tube<CTR::Functions::constant_fun<CTR::Vector<2>::type> > TubeType;
 
-//        TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k_fun1, params.E, params.G);
-//        TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k_fun2, params.E, params.G);
-//        TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k_fun3, params.E, params.G);
+        TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k_fun1, params.E, params.G);
+        TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k_fun2, params.E, params.G);
+        TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k_fun3, params.E, params.G);
 
-//        cannula_ = std::make_tuple(T1, T2, T3);
-//}
+        cannula_ = std::make_tuple(T1, T2, T3);
+}
 
 CTR3Robot::~CTR3Robot()
 {
@@ -30,15 +31,15 @@ void CTR3Robot::init()
 	// Initial Kinematics Call
 	// Forward Kinematics
 	qHome_ << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; //TODO: this needs to be updated for new tubes
-	currStateVector_.psiL_ << qHome_.head(3);			// Store everything for current state
-	currStateVector_.beta_ << qHome_.tail(3);
-	currStateVector_.fTip_ = Eigen::Vector3d::Zero();
-	currStateVector_.tTip_ = Eigen::Vector3d::Zero();
+        currKinematicsInput_.PsiL = qHome_.head(3);			// Store everything for current state
+        currKinematicsInput_.Beta = qHome_.tail(3);
+        currKinematicsInput_.Ftip = Eigen::Vector3d::Zero();
+        currKinematicsInput_.Ttip = Eigen::Vector3d::Zero();
         currQVec_ << qHome_;
-        currKinematics_ = callKinematicsWithDenseOutput(currQVec_); // interpolation happens in here & sets currInterpolatedBackbone_;
+        currKinematics_ = callKinematicsWithDenseOutput(currKinematicsInput_); // interpolation happens in here & sets currInterpolatedBackbone_;
 }
 
-bool CTR3Robot::SetCannula(const medlab::CTR3RobotParams params)
+bool CTR3Robot::SetCannula(medlab::CTR3RobotParams params)
 {
 	const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / params.k1)*Eigen::Vector2d::UnitX()); 
 	const CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / params.k2)*Eigen::Vector2d::UnitX());
@@ -59,14 +60,14 @@ medlab::Cannula3 CTR3Robot::GetCannula()
 	return cannula_;
 }
 
-bool CTR3Robot::SetCurrStateVector(medlab::CTR3ModelStateVector stateVector)
+bool CTR3Robot::SetCurrKinematicsInput(medlab::CTR3ModelStateVector kinematicsInput)
 {
-	currStateVector_ = stateVector;
+        currKinematicsInput_ = kinematicsInput;
 	return true;
 }
-medlab::CTR3ModelStateVector CTR3Robot::GetCurrStateVector()
+medlab::CTR3ModelStateVector CTR3Robot::GetCurrKinematicsInput()
 {
-	return currStateVector_;
+        return currKinematicsInput_;
 }
 
 bool CTR3Robot::SetCurrQVec(RoboticsMath::Vector6d qVec)
@@ -89,15 +90,15 @@ medlab::InterpRet CTR3Robot::GetInterpolatedBackbone()
 	return currInterpolatedBackbone_;
 }
 
-medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(RoboticsMath::Vector6d newStateVector)
+medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3ModelStateVector newKinematicsInput)
 {
-	medlab::CTR3ModelStateVector q;
-        q.psiL_ << newStateVector.head<3>;
-        q.beta_ << newStateVector.tail<3>;
-        q.fTip_ << Eigen::Vector3d::Zero();
-        q.tTip_ << Eigen::Vector3d::Zero();
+//	medlab::CTR3ModelStateVector q;
+//        q.psiL_ = newKinematicsInput.head<3>;
+//        q.beta_ = newKinematicsInput.tail<3>;
+//        q.fTip_ = Eigen::Vector3d::Zero();
+//        q.tTip_ = Eigen::Vector3d::Zero();
 
-	auto ret1 = CTR::Kinematics_with_dense_output(cannula_, q, medlab::OType());
+        auto ret1 = CTR::Kinematics_with_dense_output(cannula_, newKinematicsInput, medlab::OType());
 
 	int nPts = ret1.arc_length_points.size();
 	double* ptr = &ret1.arc_length_points[0];
@@ -143,8 +144,8 @@ Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin) //TODO: we should not use
 	for (int j = 0; j < nPts; j++)
 	{
 		double* pPtr = &kin.dense_state_output[j].p[0];
-		double* qPtr = &kin.dense_state_output[j].q[o];
-		double* psiPtr = &kin.dense_state_output[j].Psi[o];
+                double* qPtr = &kin.dense_state_output[j].q[0];
+                double* psiPtr = &kin.dense_state_output[j].Psi[0];
 		Eigen::Map<Eigen::Vector3d> pj(pPtr, 3);
 		Eigen::Map<Eigen::Vector4d> qj(qPtr, 4);
 		Eigen::Map<Eigen::Vector3d> psij(psiPtr, 3);
@@ -170,7 +171,7 @@ Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin) //TODO: we should not use
 	baseRotations << psiAngles(0, basePlateIdx), psiAngles(1, basePlateIdx), psiAngles(2, basePlateIdx);
 
 	Rbt = RoboticsMath::quat2rotm(quat.col(nPts - 1));
-	pbt = pos.col(nPts - 1) - qHome.Beta_(0)*Eigen::Vector3d::UnitZ();  //TODO: why is qhome used here? - I think patrick found this error - we need at s=beta
+        pbt = pos.col(nPts - 1) - qHome_(0)*Eigen::Vector3d::UnitZ();  //TODO: why is qhome used here? - I think patrick found this error - we need at s=beta
 	Tbt = RoboticsMath::assembleTransformation(Rbt, pos.col(nPts - 1));
 
 	Eigen::MatrixXd poseData(8, nPts);
@@ -210,7 +211,7 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
 	xxLinspace.setLinSpaced(nPts, 0.0, 1.0);
 	Eigen::VectorXd xxUnsorted(nPtsTotal);
 	xxUnsorted << xxLinspace, zeroToOne;
-	std::sort(xxUnsorted.data(), xxUnsorted.data + xxUnsorted.size());
+        std::sort(xxUnsorted.data(), xxUnsorted.data() + xxUnsorted.size());
 	Eigen::VectorXd xx = xxUnsorted.reverse(); //Rich's interpolation functions call for descending order
 
 	// List of return arc lengths in the original scaling/offset
@@ -256,7 +257,7 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
 	Eigen::VectorXd z = poseDataRef.row(2); // interp z
 	std::vector<double> zVec;
 	zVec.resize(z.size());
-	Eigen::VectorXd::Map(&zVec[0], z.size()) = zVec;
+        Eigen::VectorXd::Map(&zVec[0], z.size()) = z;
 	tk::spline Sz;
 	Sz.set_points(sVec, zVec);
 	Eigen::VectorXd zInterp(nPtsTotal);

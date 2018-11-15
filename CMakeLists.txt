@@ -213,8 +213,8 @@ add_executable(needle_broadcaster src/needle_broadcaster.cpp)
 add_executable(kinematics src/kinematics.cpp)
 add_executable(workspace_display src/workspace_display.cpp)
 add_executable(resolved_rates src/resolved_rates.cpp)
-#add_executable(endonasal_teleop src/endonasal_teleop.cpp src/CTR3Robot.cpp)
-add_executable(endonasal_teleop src/endonasal_teleop.cpp)
+add_executable(endonasal_teleop src/endonasal_teleop.cpp src/CTR3Robot.cpp)
+#add_executable(endonasal_teleop src/endonasal_teleop.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

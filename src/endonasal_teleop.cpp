@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
         robot1Params.OD3 = 2.540E-3;
         robot1Params.ID3 = 2.248E-3;
 
-        //CTR3Robot robot1;
+        CTR3Robot robot1(robot1Params);
         //robot1.SetCannula(robot1Params);
 
 	/*******************************************************************************
