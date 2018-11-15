@@ -332,13 +332,24 @@ int main(int argc, char *argv[])
         robot1Params.OD1 = 1.165E-3;
         robot1Params.ID1 = 1.067E-3;
         robot1Params.L2 = 163E-3;
-        robot1Params.Lt2 = robot1Params.L1 - 38E-3;
+        robot1Params.Lt2 = robot1Params.L2 - 38.0E-3;
         robot1Params.OD2 = 2.0574E-3;
         robot1Params.ID2 = 1.6002E-3;
         robot1Params.L3 = 104.4E-3;
         robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
         robot1Params.OD3 = 2.540E-3;
         robot1Params.ID3 = 2.248E-3;
+
+//        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / robot1Params.k1)*Eigen::Vector2d::UnitX());
+//        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / robot1Params.k2)*Eigen::Vector2d::UnitX());
+//        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / robot1Params.k3)*Eigen::Vector2d::UnitX());
+
+
+//        medlab::TubeType T1 = CTR::make_annular_tube(robot1Params.L1, robot1Params.Lt1, robot1Params.OD1, robot1Params.ID1, k_fun1, robot1Params.E, robot1Params.G);
+//        medlab::TubeType T2 = CTR::make_annular_tube(robot1Params.L2, robot1Params.Lt2, robot1Params.OD2, robot1Params.ID2, k_fun2, robot1Params.E, robot1Params.G);
+//        medlab::TubeType T3 = CTR::make_annular_tube(robot1Params.L3, robot1Params.Lt3, robot1Params.OD3, robot1Params.ID3, k_fun3, robot1Params.E, robot1Params.G);
+
+//        medlab::Cannula3 robot1Cannula = std::make_tuple(T1, T2, T3);
 
         CTR3Robot robot1(robot1Params);
         //robot1.SetCannula(robot1Params);

@@ -16,7 +16,8 @@ class CTR3Robot
 public:
 	CTR3Robot();
         CTR3Robot(medlab::CTR3RobotParams params);
-	~CTR3Robot();
+//        CTR3Robot(medlab::Cannula3 cannula);
+        ~CTR3Robot();
 	void init();
 
         bool SetCannula(medlab::CTR3RobotParams params); // setting a pointer is better practice? shared pointers?

@@ -6,19 +6,23 @@ CTR3Robot::CTR3Robot()
 
 }
 
+//CTR3Robot::CTR3Robot(medlab::Cannula3 cannula)
+//{
+//  cannula_ = cannula;
+//}
+
 CTR3Robot::CTR3Robot(medlab::CTR3RobotParams params)
 {
+
         CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / params.k1)*Eigen::Vector2d::UnitX());
         CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / params.k2)*Eigen::Vector2d::UnitX());
         CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / params.k3)*Eigen::Vector2d::UnitX());
 
-        typedef CTR::Tube<CTR::Functions::constant_fun<CTR::Vector<2>::type> > TubeType;
+        medlab::TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k_fun1, params.E, params.G);
+        medlab::TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k_fun2, params.E, params.G);
+        medlab::TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k_fun3, params.E, params.G);
 
-        TubeType T1 = CTR::make_annular_tube(params.L1, params.Lt1, params.OD1, params.ID1, k_fun1, params.E, params.G);
-        TubeType T2 = CTR::make_annular_tube(params.L2, params.Lt2, params.OD2, params.ID2, k_fun2, params.E, params.G);
-        TubeType T3 = CTR::make_annular_tube(params.L3, params.Lt3, params.OD3, params.ID3, k_fun3, params.E, params.G);
-
-        cannula_ = std::make_tuple(T1, T2, T3);
+        auto cannula = std::make_tuple(T1, T2, T3);
 }
 
 CTR3Robot::~CTR3Robot()
