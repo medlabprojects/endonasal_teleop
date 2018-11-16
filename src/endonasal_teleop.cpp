@@ -319,6 +319,12 @@ int main(int argc, char *argv[])
 //	Eigen::Matrix<double, 6, 6> A;
 //	Eigen::Matrix<double, 6, 6> Jstar;
 
+        ///
+        ///
+        /// CTR3ROBOT 1 DEFINITION
+        ///
+        ///
+
         medlab::CTR3RobotParams robot1Params;
         robot1Params.E = 60E9;
         robot1Params.G = 60E9 / 2.0 / 1.33;
@@ -335,25 +341,7 @@ int main(int argc, char *argv[])
         robot1Params.OD3 = 2.540E-3;
         robot1Params.ID3 = 2.248E-3;
 
-//        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun1((1.0 / robot1Params.k1)*Eigen::Vector2d::UnitX());
-//        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun2((1.0 / robot1Params.k2)*Eigen::Vector2d::UnitX());
-//        CTR::Functions::constant_fun<CTR::Vector<2>::type > k_fun3((1.0 / robot1Params.k3)*Eigen::Vector2d::UnitX());
-
-
-//        medlab::TubeType T1 = CTR::make_annular_tube(robot1Params.L1, robot1Params.Lt1, robot1Params.OD1, robot1Params.ID1, k_fun1, robot1Params.E, robot1Params.G);
-//        medlab::TubeType T2 = CTR::make_annular_tube(robot1Params.L2, robot1Params.Lt2, robot1Params.OD2, robot1Params.ID2, k_fun2, robot1Params.E, robot1Params.G);
-//        medlab::TubeType T3 = CTR::make_annular_tube(robot1Params.L3, robot1Params.Lt3, robot1Params.OD3, robot1Params.ID3, k_fun3, robot1Params.E, robot1Params.G);
-
-//        medlab::Cannula3 robot1Cannula = std::make_tuple(T1, T2, T3);
-
-
-
-
-        // Cannula definition...
-
-        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  T1_type;
-        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  T2_type;
-        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  T3_type;
+        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
         // Curvature of each tube
         CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun1( (1.0/63.5e-3)*Eigen::Vector2d::UnitX() );
@@ -381,9 +369,9 @@ int main(int argc, char *argv[])
 
         // Define tubes
         // Inputs: make_annular_tube( L, Lt, OD, ID, k_fun, E, G );
-        T1_type T1 = CTR::make_annular_tube( L1, Lt1, OD1, ID1, k_fun1, E, G );
-        T2_type T2 = CTR::make_annular_tube( L2, Lt2, OD2, ID2, k_fun2, E, G );
-        T3_type T3 = CTR::make_annular_tube( L3, Lt3, OD3, ID3, k_fun3, E, G );
+        TubeType T1 = CTR::make_annular_tube( L1, Lt1, OD1, ID1, k_fun1, E, G );
+        TubeType T2 = CTR::make_annular_tube( L2, Lt2, OD2, ID2, k_fun2, E, G );
+        TubeType T3 = CTR::make_annular_tube( L3, Lt3, OD3, ID3, k_fun3, E, G );
 
         // Assemble cannula
         auto cannula = std::make_tuple( T1, T2, T3 );
