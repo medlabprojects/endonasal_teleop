@@ -379,10 +379,10 @@ int main(int argc, char *argv[])
         // Initialize CTR3Robot Instance with cannula
         CTR3Robot robot1(cannula);
         robot1.init();
-        std::cout << "pTip" << robot1.currKinematics_.Ptip << std::endl << std::endl;
-        std::cout << "qTip" << robot1.currKinematics_.Qtip << std::endl << std::endl;
-        std::cout << "Stability" << robot1.currKinematics_.Stability << std::endl << std::endl;
-        std::cout << "Jtip" << robot1.currKinematics_.Jtip << std::endl << std::endl;
+        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
+        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
+        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
+        std::cout << "Jtip" << robot1.currKinematics.Jtip << std::endl << std::endl;
 
 	/*******************************************************************************
 	SET UP PUBLISHERS, SUBSCRIBERS, SERVICES & CLIENTS

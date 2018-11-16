@@ -20,7 +20,7 @@ void CTR3Robot::init()
   currKinematicsInput_.Ftip = Eigen::Vector3d::Zero();
   currKinematicsInput_.Ttip = Eigen::Vector3d::Zero();
   currQVec_ << qHome_;
-  currKinematics_ = callKinematicsWithDenseOutput(currKinematicsInput_); // interpolation happens in here & sets currInterpolatedBackbone_;
+  currKinematics = callKinematicsWithDenseOutput(currKinematicsInput_); // interpolation happens in here & sets currInterpolatedBackbone_;
 }
 
 medlab::Cannula3 CTR3Robot::GetCannula()
@@ -124,7 +124,7 @@ medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsIn
   kinoutput.Stability = Stability;
   kinoutput.Jtip = J;
 
-  currKinematics_ = kinoutput;
+  currKinematics = kinoutput;
 
   return kinoutput;
 }
@@ -186,18 +186,17 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
 
   // Create a zero to one list for ref arc lengths
   int nRef = sRef.size();
-  double totalArcLength = sRef(nRef - 1) - sRef(0);
+  double totalArcLength = sRef(0) - sRef(nRef - 1);
   Eigen::VectorXd sRef0Vec(nRef);
-  sRef0Vec.fill(sRef(0));
+  sRef0Vec.fill(sRef(nRef-1));
   Eigen::VectorXd zeroToOne = (1 / totalArcLength)*(sRef - sRef0Vec);
 
   // Create a zero to one vector including ref arc lengths & interp arc lengths (evenly spaced)
   int nPtsTotal = nPts + nRef;
-  lastPosInterp_ = nPtsTotal - 1;
 
   Eigen::VectorXd xxLinspace(nPts);
   xxLinspace.fill(0.0);
-  xxLinspace.setLinSpaced(nPts, 0.0, 1.0);
+  xxLinspace.setLinSpaced(nPts, 1.0, 0.0);
   Eigen::VectorXd xxUnsorted(nPtsTotal);
   xxUnsorted << xxLinspace, zeroToOne;
   std::sort(xxUnsorted.data(), xxUnsorted.data() + xxUnsorted.size());
@@ -205,19 +204,20 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
 
   // List of return arc lengths in the original scaling/offset
   Eigen::VectorXd xxSRef0Vec(nPtsTotal);
-  xxSRef0Vec.fill(sRef(0));
-  Eigen::VectorXd sInterp = totalArcLength*xx.reverse() + xxSRef0Vec;
+  xxSRef0Vec.fill(sRef(nRef-1));
+  Eigen::VectorXd sInterp = totalArcLength*xx + xxSRef0Vec;
 
   // Interpolate to find list of return quaternions
-  Eigen::MatrixXd qInterp1 = RoboticsMath::quatInterp(qRef.rowwise().reverse(), zeroToOne.reverse(), xx);
-  Eigen::MatrixXd qInterp = qInterp1.rowwise().reverse();
+  Eigen::MatrixXd qInterp = RoboticsMath::quatInterp(qRef, zeroToOne, xx);
 
   // Interpolate to find list of return positions
+  Eigen::VectorXd sInterpSpline = sInterp.reverse(); // spline requires ascending order
+
   std::vector<double> sVec;
   sVec.resize(sRef.size());
-  Eigen::VectorXd::Map(&sVec[0], sRef.size()) = sRef;
+  Eigen::VectorXd::Map(&sVec[0], sRef.size()) = sRef.reverse();
 
-  Eigen::VectorXd x = poseDataRef.row(0); // interp x
+  Eigen::VectorXd x = poseDataRef.row(0).reverse(); // interp x
   std::vector<double> xVec;
   xVec.resize(x.size());
   Eigen::VectorXd::Map(&xVec[0], x.size()) = x;
@@ -227,10 +227,11 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
   xInterp.fill(0);
   for (int i = 0; i < nPtsTotal; i++)
   {
-    xInterp(i) = Sx(sInterp(i));
+    xInterp(i) = Sx(sInterpSpline(i));
   }
+  xInterp = xInterp.reverse().eval();
 
-  Eigen::VectorXd y = poseDataRef.row(1); // interp y
+  Eigen::VectorXd y = poseDataRef.row(1).reverse(); // interp y
   std::vector<double> yVec;
   yVec.resize(y.size());
   Eigen::VectorXd::Map(&yVec[0], y.size()) = y;
@@ -240,10 +241,11 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
   yInterp.fill(0);
   for (int i = 0; i < nPtsTotal; i++)
   {
-    yInterp(i) = Sy(sInterp(i));
+    yInterp(i) = Sy(sInterpSpline(i));
   }
+  yInterp = yInterp.reverse().eval();
 
-  Eigen::VectorXd z = poseDataRef.row(2); // interp z
+  Eigen::VectorXd z = poseDataRef.row(2).reverse(); // interp z
   std::vector<double> zVec;
   zVec.resize(z.size());
   Eigen::VectorXd::Map(&zVec[0], z.size()) = z;
@@ -252,8 +254,9 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
   Eigen::VectorXd zInterp(nPtsTotal);
   for (int i = 0; i < nPtsTotal; i++)
   {
-    zInterp(i) = Sz(sInterp(i));
+    zInterp(i) = Sz(sInterpSpline(i));
   }
+  zInterp = zInterp.reverse().eval();
 
   Eigen::MatrixXd pInterp(3, nPtsTotal);
   pInterp.fill(0);
