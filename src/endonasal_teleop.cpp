@@ -17,9 +17,9 @@
 #include <QVector>
 
 // Cannula kinematics headers
-#include "Kinematics.h"
-#include "BasicFunctions.h"
-#include "Tube.h"
+//#include <Kinematics.h>
+#include <BasicFunctions.h>
+#include <Tube.h>
 
 #include "MedlabTypes.h"
 #include "RoboticsMath.h"
@@ -184,10 +184,10 @@ void kinStatusCallback(const std_msgs::Bool &fkmMsg)
 	}
 }*/
 
-RoboticsMath::Matrix4d omniPose;
-RoboticsMath::Matrix4d prevOmni;
-RoboticsMath::Matrix4d curOmni;
-RoboticsMath::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
+Eigen::Matrix4d omniPose;
+Eigen::Matrix4d prevOmni;
+Eigen::Matrix4d curOmni;
+Eigen::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
 double rosLoopRate = 100.0;
 
 geometry_msgs::Pose tempMsg;
@@ -351,8 +351,60 @@ int main(int argc, char *argv[])
 
 //        medlab::Cannula3 robot1Cannula = std::make_tuple(T1, T2, T3);
 
-        CTR3Robot robot1(robot1Params);
+
+
+
+        // Cannula definition...
+
+        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  T1_type;
+        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  T2_type;
+        typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  T3_type;
+
+        // Curvature of each tube
+        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun1( (1.0/63.5e-3)*Eigen::Vector2d::UnitX() );
+        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun2( (1.0/51.2e-3)*Eigen::Vector2d::UnitX() );
+        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun3( (1.0/71.4e-3)*Eigen::Vector2d::UnitX() );
+
+        // Material properties
+        double E = 60e9;
+        double G = 60e9 / 2.0 / 1.33;
+        // Tube 1 geometry
+        double L1 = 222.5e-3;
+        double Lt1 = L1 - 42.2e-3;
+        double OD1 = 1.165e-3;
+        double ID1 = 1.067e-3;
+        // Tube 2 geometry
+        double L2 = 163e-3;
+        double Lt2 = L2 - 38e-3;
+        double OD2 = 2.0574e-3;
+        double ID2 = 1.6002e-3;
+        //Tube 3 geometry
+        double L3 = 104.4e-3;
+        double Lt3 = L3 - 21.4e-3;
+        double OD3 = 2.540e-3;
+        double ID3 = 2.2479e-3;
+
+        // Define tubes
+        // Inputs: make_annular_tube( L, Lt, OD, ID, k_fun, E, G );
+        T1_type T1 = CTR::make_annular_tube( L1, Lt1, OD1, ID1, k_fun1, E, G );
+        T2_type T2 = CTR::make_annular_tube( L2, Lt2, OD2, ID2, k_fun2, E, G );
+        T3_type T3 = CTR::make_annular_tube( L3, Lt3, OD3, ID3, k_fun3, E, G );
+
+        // Assemble cannula
+        auto cannula = std::make_tuple( T1, T2, T3 );
+        CTR3Robot robot1(cannula);
+        robot1.init();
+        std::cout << "DUMMY" << robot1.dummy() << std::endl;
+
+//        auto cannulaTest = robot1.GetCannula();
+//        std::cout << std::get<0>(cannulaTest);
+        //CTR3Robot robot1(robot1Params);
         //robot1.SetCannula(robot1Params);
+
+
+
+
+
 
 	/*******************************************************************************
 	SET UP PUBLISHERS, SUBSCRIBERS, SERVICES & CLIENTS

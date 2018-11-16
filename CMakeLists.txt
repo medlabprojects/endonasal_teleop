@@ -169,18 +169,18 @@ link_directories(
 #  /home/remireaa/my_library/ros_lib/tf
 )
 
-set(SRC
-  src/kinematics.cpp
-  src/workspace_display.cpp
-  src/needle_broadcaster.cpp
-#  src/needle_display.cpp
-  src/resolved_rates.cpp
-  src/tf_broadcaster.cpp
-
-  src/CTR3Robot.cpp
-  src/ResolvedRatesController.cpp
-  src/endonasal_teleop.cpp
-)
+#set(SRC
+##  src/kinematics.cpp
+#  src/workspace_display.cpp
+#  src/needle_broadcaster.cpp
+##  src/needle_display.cpp
+##  src/resolved_rates.cpp
+#  src/tf_broadcaster.cpp
+#	src/RoboticsMath.cpp
+#  src/CTR3Robot.cpp
+##  src/ResolvedRatesController.cpp
+#  src/endonasal_teleop.cpp
+#)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -200,42 +200,42 @@ set(CMAKE_AUTOUIC ON)
 #add_dependencies(endonasal_teleop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
-# Find the QtWidgets library
 find_package(Qt5Widgets)
 find_package(Qt5PrintSupport)
 find_package(Qt5Core)
 find_package(Qt5Gui)
 
 ## Declare a C++ executable
-add_executable(tf_broadcaster src/tf_broadcaster.cpp)
+add_executable(endonasal_teleop src/endonasal_teleop.cpp src/RoboticsMath.cpp src/CTR3Robot.cpp )
+#add_executable(tf_broadcaster src/tf_broadcaster.cpp)
 #add_executable(needle_display src/needle_display.cpp)
-add_executable(needle_broadcaster src/needle_broadcaster.cpp)
-add_executable(kinematics src/kinematics.cpp)
-add_executable(workspace_display src/workspace_display.cpp)
-add_executable(resolved_rates src/resolved_rates.cpp)
-add_executable(endonasal_teleop src/endonasal_teleop.cpp src/CTR3Robot.cpp)
+#add_executable(needle_broadcaster src/needle_broadcaster.cpp)
+#add_executable(kinematics src/kinematics.cpp)
+#add_executable(workspace_display src/workspace_display.cpp)
+#add_executable(resolved_rates src/resolved_rates.cpp)
+#add_executable(endonasal_teleop src/endonasal_teleop.cpp src/CTR3Robot.cpp)
 #add_executable(endonasal_teleop src/endonasal_teleop.cpp)
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(endonsasal_teleop_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
-target_link_libraries(needle_broadcaster ${catkin_LIBRARIES})
+#target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
+#target_link_libraries(needle_broadcaster ${catkin_LIBRARIES})
 #target_link_libraries(needle_display ${catkin_LIBRARIES})
-target_link_libraries(kinematics ${catkin_LIBRARIES} CannulaKinematics)
-target_link_libraries(workspace_display ${catkin_LIBRARIES} CannulaKinematics)
-target_link_libraries(resolved_rates ${catkin_LIBRARIES} CannulaKinematics)
+#target_link_libraries(kinematics ${catkin_LIBRARIES} CannulaKinematics)
+#target_link_libraries(workspace_display ${catkin_LIBRARIES} CannulaKinematics)
+#target_link_libraries(resolved_rates ${catkin_LIBRARIES} CannulaKinematics)
 #target_link_libraries(main ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(endonasal_teleop ${catkin_LIBRARIES} CannulaKinematics)
 
 
-target_link_libraries(kinematics Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
-target_link_libraries(workspace_display Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
-target_link_libraries(resolved_rates Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
-target_link_libraries(endonasal_teleop Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui
-${catkin_LIBRARIES})
+#target_link_libraries(kinematics Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
+#target_link_libraries(workspace_display Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
+#target_link_libraries(resolved_rates Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
+target_link_libraries(endonasal_teleop Qt5::Widgets Qt5::PrintSupport Qt5::Core Qt5::Gui ${catkin_LIBRARIES})
 
 #############
 ## Install ##

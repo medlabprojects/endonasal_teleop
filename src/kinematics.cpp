@@ -64,11 +64,11 @@ typedef Eigen::Matrix<double,4,4> Matrix4d;
 typedef Eigen::Matrix<double,6,6> Matrix6d;
 typedef Eigen::Matrix<double,7,1> Vector7d;
 typedef Eigen::Matrix<double,6,1> Vector6d;
-typedef tuple < Tube< constant_fun< Vector2d > >,
-                Tube< constant_fun< Vector2d > >,
-                Tube< constant_fun< Vector2d > > > Cannula3;
-typedef constant_fun<Eigen::Vector2d> CurvFun;
-typedef std::tuple< Tube<CurvFun>, Tube<CurvFun>, Tube<CurvFun> > CannulaT;
+//typedef tuple < Tube< constant_fun< Vector2d > >,
+//                Tube< constant_fun< Vector2d > >,
+//                Tube< constant_fun< Vector2d > > > Cannula3;
+//typedef constant_fun<Eigen::Vector2d> CurvFun;
+//typedef std::tuple< Tube<CurvFun>, Tube<CurvFun>, Tube<CurvFun> > CannulaT;
 typedef DeclareOptions< Option::ComputeJacobian, Option::ComputeGeometry, Option::ComputeStability, Option::ComputeCompliance>::options OType;
 
 struct interpRet

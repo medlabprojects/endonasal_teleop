@@ -1,25 +1,21 @@
-#ifndef MEDLABTYPES_H
-#define MEDLABTYPES_H
-
-#endif // MEDLABTYPES_H
 #pragma once
+
 #include <Eigen/Dense>
 #include <vector>
-#include "Tube.h"
-#include "BasicFunctions.h"
-#include "Utility.h"
+#include <tuple>
+#include <Tube.h>
+#include <BasicFunctions.h>
+#include <Options.h>
+#include <Utility.h>
 #include "spline.h"
 #include "RoboticsMath.h"
 
 namespace medlab
 {
-        typedef std::tuple < CTR::Tube< CTR::Functions::constant_fun< Eigen::Vector2d > >,
-                             CTR::Tube< CTR::Functions::constant_fun< Eigen::Vector2d > >,
-                             CTR::Tube< CTR::Functions::constant_fun< Eigen::Vector2d > > > Cannula3; // CTR3Robot architecture
-        typedef CTR::Functions::constant_fun<Eigen::Vector2d> CurvFun;
-        typedef std::tuple < CTR::Tube<CurvFun>, CTR::Tube<CurvFun>, CTR::Tube<CurvFun> > CannulaT;
-        typedef CTR::Tube<CTR::Functions::constant_fun<CTR::Vector<2>::type> > TubeType;
-        typedef CTR::DeclareOptions < CTR::Option::ComputeJacobian, CTR::Option::ComputeGeometry, CTR::Option::ComputeStability, CTR::Option::ComputeCompliance>::options OType;
+        typedef CTR::Functions::constant_fun< Eigen::Vector2d > CurvFun;
+        typedef std::tuple< CTR::Tube<CurvFun>, CTR::Tube<CurvFun>, CTR::Tube<CurvFun> > Cannula3; // CTR3Robot architecture
+        typedef CTR::Tube< CurvFun > TubeType;
+        typedef CTR::DeclareOptions < CTR::Option::ComputeJacobian, CTR::Option::ComputeGeometry, CTR::Option::ComputeStability, CTR::Option::ComputeCompliance >::options OType;
 
         struct CTR3RobotParams {
 
