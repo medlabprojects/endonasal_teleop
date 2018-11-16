@@ -38,18 +38,16 @@ public:
 
         medlab::InterpRet interpolateBackbone(Eigen::VectorXd sRef, Eigen::MatrixXd poseDataRef, int nPts);
 
+        medlab::KinOut currKinematics_;  // kinout from kinematics call, transformed into base frame & interpolated
+
 private:
 
         medlab::Cannula3 cannula_;  // cannula object fed to kinematics call
-        //medlab::CannulaT curvFuns_;
-//        medlab::CurvFun k1_;
-//        medlab::CurvFun k2_;
-//        medlab::CurvFun k3_;
+
         medlab::CTR3RobotParams currCannulaParams_; // params that define the cannula3
         medlab::CTR3KinematicsInputVector currKinematicsInput_; // state vector fed to kinematics call //TODO: store full q_vector and function to condense
         RoboticsMath::Vector6d currQVec_; // condensed state vector [psiL, beta]
         RoboticsMath::Vector6d qHome_; // home configuration (joint space [psiL, beta])
         medlab::InterpRet currInterpolatedBackbone_; // interpolated cannula
         int lastPosInterp_;
-        medlab::KinOut currKinematics_;  // kinout from kinematics call, transformed into base frame & interpolated
 };

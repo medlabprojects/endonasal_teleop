@@ -223,12 +223,7 @@ void omniButtonCallback(const std_msgs::Int8 &buttonMsg)
 		justClutched = true;
 	}
 }
-//void zero_force()
-//{
-//	omniForce.x = 0.0;
-//	omniForce.y = 0.0;
-//	omniForce.z = 0.0;
-//}
+
 
 int main(int argc, char *argv[])
 {
@@ -392,19 +387,14 @@ int main(int argc, char *argv[])
 
         // Assemble cannula
         auto cannula = std::make_tuple( T1, T2, T3 );
+
+        // Initialize CTR3Robot Instance with cannula
         CTR3Robot robot1(cannula);
         robot1.init();
-        std::cout << "DUMMY" << robot1.dummy() << std::endl;
-
-//        auto cannulaTest = robot1.GetCannula();
-//        std::cout << std::get<0>(cannulaTest);
-        //CTR3Robot robot1(robot1Params);
-        //robot1.SetCannula(robot1Params);
-
-
-
-
-
+        std::cout << "pTip" << robot1.currKinematics_.Ptip << std::endl << std::endl;
+        std::cout << "qTip" << robot1.currKinematics_.Qtip << std::endl << std::endl;
+        std::cout << "Stability" << robot1.currKinematics_.Stability << std::endl << std::endl;
+        std::cout << "Jtip" << robot1.currKinematics_.Jtip << std::endl << std::endl;
 
 	/*******************************************************************************
 	SET UP PUBLISHERS, SUBSCRIBERS, SERVICES & CLIENTS

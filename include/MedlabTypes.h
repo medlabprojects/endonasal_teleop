@@ -64,11 +64,15 @@ namespace medlab
         };
 
         struct KinOut {  // used by ResolvedRates.init() -> Online Resolved Rates Loop
-                Eigen::Vector3d p;
-                Eigen::Vector4d q;
-                Eigen::Vector3d alpha;
-                Eigen::Vector3d psiBeta;
-                RoboticsMath::Matrix6d jBody;		// Body Jacobian
+                Eigen::Vector3d Ptip;
+                Eigen::Vector4d Qtip;
+                Eigen::Vector4d Qbishop;
+                Eigen::Vector3d Alpha;
+                RoboticsMath::Matrix6d Jtip;
+                double Stability;
+//                Eigen::Vector3d alpha;
+//                Eigen::Vector3d psiBeta;
+//                RoboticsMath::Matrix6d jBody;		// Body Jacobian
         };
 
 }
