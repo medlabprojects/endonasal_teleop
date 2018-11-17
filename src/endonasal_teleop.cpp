@@ -377,12 +377,16 @@ int main(int argc, char *argv[])
         auto cannula = std::make_tuple( T1, T2, T3 );
 
         // Initialize CTR3Robot Instance with cannula
-        CTR3Robot robot1(cannula);
-        robot1.init();
-        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
-        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
-        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
-        std::cout << "Jtip" << robot1.currKinematics.Jtip << std::endl << std::endl;
+//        CTR3Robot robot1(cannula);
+//        robot1.init();
+
+        ResolvedRatesController rr1(cannula);
+        rr1.init();
+
+//        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
+//        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
+//        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
+//        std::cout << "Jtip" << robot1.currKinematics.Jtip << std::endl << std::endl;
 
 	/*******************************************************************************
 	SET UP PUBLISHERS, SUBSCRIBERS, SERVICES & CLIENTS
@@ -406,6 +410,13 @@ int main(int argc, char *argv[])
 
 	// rate
 	ros::Rate r(rosLoopRate);
+
+        /*******************************************************************************
+        Initialize Motor Boards
+        ********************************************************************************/
+//        McbRos* motorBoard1;
+//        std::string motorBoard1NodeName = ui_.lineEdit_nodeName->text().toStdString();
+//        motorBoard1->init(motorBoard1NodeName);
 
 	/*******************************************************************************
 	LOAD PARAMETERS FROM XML FILES
@@ -513,6 +524,14 @@ int main(int argc, char *argv[])
 
 	while (ros::ok())
 	{
+
+          // get Omni inputs
+          // decide which are active/mapped to which tools
+          // compute desired twist in whatever frame
+          // send ResolvedRates.step(desiredTwist) output to mapped motors >> mcb->setDesiredPosition()
+
+
+
 //		if (new_kin_msg == 1)
 //		{
 //			//new_kin_msg = 0;

@@ -11,16 +11,28 @@ CTR3Robot::CTR3Robot(medlab::Cannula3 cannula):
 
 }
 
-void CTR3Robot::init()
+bool CTR3Robot::init()
 {
+  // init with home position at zero
+  RoboticsMath::Vector6d qHome(RoboticsMath::Vector6d::Zero());
+  return init(qHome);
+}
 
-  qHome_ << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; //TODO: this needs to be updated for new tubes
+bool CTR3Robot::init(RoboticsMath::Vector6d qHome)
+{
+  bool wasSuccessful = false;
+  qHome_ = qHome;
+  //  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; //TODO: this needs to be updated for new tubes
   currKinematicsInput_.PsiL = qHome_.head(3);			// Store everything for current state
   currKinematicsInput_.Beta = qHome_.tail(3);
   currKinematicsInput_.Ftip = Eigen::Vector3d::Zero();
   currKinematicsInput_.Ttip = Eigen::Vector3d::Zero();
   currQVec_ << qHome_;
   currKinematics = callKinematicsWithDenseOutput(currKinematicsInput_); // interpolation happens in here & sets currInterpolatedBackbone_;
+
+  wasSuccessful = true;
+
+  return wasSuccessful;
 }
 
 medlab::Cannula3 CTR3Robot::GetCannula()
@@ -274,3 +286,4 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
   return interpResults;
 
 }
+

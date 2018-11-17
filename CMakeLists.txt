@@ -206,7 +206,7 @@ find_package(Qt5Core)
 find_package(Qt5Gui)
 
 ## Declare a C++ executable
-add_executable(endonasal_teleop src/endonasal_teleop.cpp src/RoboticsMath.cpp src/CTR3Robot.cpp )
+add_executable(endonasal_teleop src/endonasal_teleop.cpp src/RoboticsMath.cpp src/CTR3Robot.cpp src/ResolvedRatesController.cpp)
 add_executable(tf_broadcaster src/tf_broadcaster.cpp)
 add_executable(needle_broadcaster src/needle_broadcaster.cpp)
 add_executable(workspace_display src/workspace_display.cpp)
