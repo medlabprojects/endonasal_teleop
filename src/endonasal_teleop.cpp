@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
         auto cannula = std::make_tuple( T1, T2, T3 );
 
         // Initialize robot with controller
-        ResolvedRatesController rr1(cannula);
+        ResolvedRatesController rr1(cannula,robot1Params);
         rr1.init();
 
         //

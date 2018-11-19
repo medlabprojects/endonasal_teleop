@@ -5,8 +5,9 @@
 #include "MedlabTypes.h"
 #include <Kinematics.h>
 
-CTR3Robot::CTR3Robot(medlab::Cannula3 cannula):
-  cannula_(cannula)                                                   // Set cannula3
+CTR3Robot::CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params):
+  cannula_(cannula), // Set cannula3
+  currCannulaParams_(params)
 {
 
 }
@@ -40,6 +41,11 @@ bool CTR3Robot::init(RoboticsMath::Vector6d qHome)
 medlab::Cannula3 CTR3Robot::GetCannula()
 {
   return cannula_;
+}
+
+medlab::CTR3RobotParams CTR3Robot::GetCurRobotParams()
+{
+  return currCannulaParams_;
 }
 
 bool CTR3Robot::SetCurrKinematicsInputVector(medlab::CTR3KinematicsInputVector kinematicsInputVector)

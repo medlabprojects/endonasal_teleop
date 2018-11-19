@@ -1,10 +1,13 @@
 #include "ResolvedRatesController.h"
 
-ResolvedRatesController::ResolvedRatesController(medlab::Cannula3 cannula):
-  robot_(cannula)
+ResolvedRatesController::ResolvedRatesController(medlab::Cannula3 cannula, medlab::CTR3RobotParams params):
+  robot_(cannula,params)
 {
   // we might want to specify what control scheme to use, which weighting matrices
   // --> might also make sense to overload/have a default for the control scheme
+  lambdaTracking_ = 1.0E8;
+  lambdaDamping_ = 0.5;
+  lambdaJL_ = 1.0E3;
 }
 
 ResolvedRatesController::~ResolvedRatesController()
@@ -22,6 +25,25 @@ void ResolvedRatesController::init()
   RoboticsMath::Vector6d qHome;
   qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3;
   robot_.init(qHome);
+
+  // Compute initial Weighting matrices
+  SetTrackingGain(lambdaTracking_);
+  SetDampingGain(lambdaDamping_);
+  dhPrev_ = Eigen::Vector3d::Zero();
+
+  // Compute WJointLims_
+  //Eigen::Vector3d betas = qHome.bottomRows(3);
+  medlab::CTR3RobotParams params = robot_.GetCurRobotParams();
+  Eigen::Vector3d L;
+  L << params.L1, params.L2, params.L3;
+  RoboticsMath::Vector6d x = transformBetaToX(qHome,L);
+  Eigen::Vector3d xBeta;
+  xBeta = x.bottomRows(3);
+  medlab::WeightingRet JLWeightingRet = computeJLWeightingMatrix(xBeta,dhPrev_, L);
+  WJointLims_ = JLWeightingRet.W;
+  dhPrev_ = JLWeightingRet.dh;
+
+
 }
 
 RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
@@ -41,31 +63,25 @@ bool ResolvedRatesController::SetTrackingGain(double LambdaTracking)
   WTracking_(0, 0) = LambdaTracking;
   WTracking_(1, 1) = LambdaTracking;
   WTracking_(2, 2) = LambdaTracking;
-  WTracking_(3, 3) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-  WTracking_(4, 4) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-  WTracking_(5, 5) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
+  WTracking_(3,3) = 0.0;
+  WTracking_(4,4) = 0.0;
+//  WTracking_(3, 3) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
+//  WTracking_(4, 4) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
+  WTracking_(5, 5) = LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0)*1E1; // Increase to track roll
   return true;
 }
-
 
 bool ResolvedRatesController::SetDampingGain(double LambdaDamping)
 {
   double thetadeg = 2.0; // degrees to damp as much as 1mm
-  WDamping_(0, 0) = LambdaDamping*(180.0 / thetadeg / M_PI)*(180.0 / thetadeg / M_PI);
-  WDamping_(1, 1) = LambdaDamping*(180.0 / thetadeg / M_PI)*(180.0 / thetadeg / M_PI);
-  WDamping_(2, 2) = LambdaDamping*(180.0 / thetadeg / M_PI)*(180.0 / thetadeg / M_PI);
-  WDamping_(3, 3) = LambdaDamping*1.0E6;
-  WDamping_(4, 4) = LambdaDamping*1.0E6;
-  WDamping_(5, 5) = LambdaDamping*1.0E6;
+  WDamping_(0, 0) = LambdaDamping*(180.0 / M_PI / thetadeg)*(180.0 / M_PI / thetadeg);
+  WDamping_(1, 1) = LambdaDamping*(180.0 / M_PI / thetadeg)*(180.0 / M_PI / thetadeg);
+  WDamping_(2, 2) = LambdaDamping*(180.0 / M_PI / thetadeg)*(180.0 / M_PI / thetadeg);
+  WDamping_(3, 3) = LambdaDamping*5.0E8;
+  WDamping_(4, 4) = LambdaDamping*5.0E8;
+  WDamping_(5, 5) = LambdaDamping*5.0E8;
   return true;
 }
-
-
-//bool ResolvedRatesController::SetJointLimitsGain(double LambdaJL)
-//{
-//	
-//}
-
 
 //bool ResolvedRatesController::SetInputDeviceTransform(Eigen::Matrix4d TRegistration)
 //{
@@ -152,9 +168,9 @@ double ResolvedRatesController::dhFunction(double xmin, double xmax, double x)
   return dh;
 }
 
-medlab::WeightingRet ResolvedRatesController::computeDampingWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda)
+medlab::WeightingRet ResolvedRatesController::computeJLWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L)
 {
-  RoboticsMath::Matrix6d W = Eigen::MatrixXd::Identity(6, 6);
+  RoboticsMath::Matrix6d W = RoboticsMath::Matrix6d::Identity();
 
   // No penalties on the rotational degrees of freedom (they don't have any joint limits)
   // Therefore leave the first three entries in W as 1.
@@ -168,7 +184,7 @@ medlab::WeightingRet ResolvedRatesController::computeDampingWeightingMatrix(Eige
   double dh1 = dhFunction(x1min, x1max, x1);
   W(3, 3) = (dh1 >= dhPrev(0))*(1 + dh1) + (dh1 < dhPrev(0)) * 1;
   //W(3,3) = 1+dh1;
-  W(3, 3) *= lambda;
+  W(3, 3) *= lambdaJL_;
 
   // x2:
   double x2min = eps;
@@ -177,7 +193,7 @@ medlab::WeightingRet ResolvedRatesController::computeDampingWeightingMatrix(Eige
   double dh2 = dhFunction(x2min, x2max, x2);
   W(4, 4) = (dh2 >= dhPrev(1))*(1 + dh2) + (dh2 < dhPrev(1)) * 1;
   //W(4,4) = 1+dh2;
-  W(4, 4) *= lambda;
+  W(4, 4) *= lambdaJL_;
 
   // x3:
   double x3min = eps;
@@ -186,7 +202,7 @@ medlab::WeightingRet ResolvedRatesController::computeDampingWeightingMatrix(Eige
   double dh3 = dhFunction(x3min, x3max, x3);
   W(5, 5) = (dh3 >= dhPrev(2))*(1 + dh3) + (dh3 < dhPrev(2)) * 1;
   //W(5,5) = 1+dh3;
-  W(5, 5) *= lambda;
+  W(5, 5) *= lambdaJL_;
 
   Eigen::Vector3d dh;
   dh << dh1, dh2, dh3;

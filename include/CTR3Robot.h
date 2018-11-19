@@ -14,11 +14,13 @@ class CTR3Robot
 {
 
 public:
-  CTR3Robot(medlab::Cannula3 cannula);
+  CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params);
   bool init();
   bool init(RoboticsMath::Vector6d qHome);
 
   medlab::Cannula3 GetCannula();
+
+  medlab::CTR3RobotParams GetCurRobotParams();
 
   // [PsiL, Beta, Ftip, Ttip]
   bool SetCurrKinematicsInputVector(medlab::CTR3KinematicsInputVector kinematicsInputVector);
