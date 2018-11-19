@@ -6,7 +6,7 @@
 #include <Kinematics.h>
 
 CTR3Robot::CTR3Robot(medlab::Cannula3 cannula):
-  cannula_(cannula)
+  cannula_(cannula)                                                   // Set cannula3
 {
 
 }
@@ -20,19 +20,21 @@ bool CTR3Robot::init()
 
 bool CTR3Robot::init(RoboticsMath::Vector6d qHome)
 {
-  bool wasSuccessful = false;
-  qHome_ = qHome;
+  bool success = false;
+
+  nInterp_ = 200;
+  qHome_ = qHome;                                                       // Store qHome
   //  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; //TODO: this needs to be updated for new tubes
-  currKinematicsInput_.PsiL = qHome_.head(3);			// Store everything for current state
-  currKinematicsInput_.Beta = qHome_.tail(3);
-  currKinematicsInput_.Ftip = Eigen::Vector3d::Zero();
-  currKinematicsInput_.Ttip = Eigen::Vector3d::Zero();
-  currQVec_ << qHome_;
-  currKinematics = callKinematicsWithDenseOutput(currKinematicsInput_); // interpolation happens in here & sets currInterpolatedBackbone_;
+  currKinematicsInputVector_.PsiL = qHome_.head(3);			// Store input vector as qHome
+  currKinematicsInputVector_.Beta = qHome_.tail(3);
+  currKinematicsInputVector_.Ftip = Eigen::Vector3d::Zero();
+  currKinematicsInputVector_.Ttip = Eigen::Vector3d::Zero();
+  currQVec_ << qHome_;                                                  // Store condensed input vector
+  currKinematics = callKinematicsWithDenseOutput(currKinematicsInputVector_); // currInterpolatedBackbone_ set in here
 
-  wasSuccessful = true;
+  success = true;
 
-  return wasSuccessful;
+  return success;
 }
 
 medlab::Cannula3 CTR3Robot::GetCannula()
@@ -40,14 +42,14 @@ medlab::Cannula3 CTR3Robot::GetCannula()
   return cannula_;
 }
 
-bool CTR3Robot::SetCurrKinematicsInput(medlab::CTR3KinematicsInputVector kinematicsInput)
+bool CTR3Robot::SetCurrKinematicsInputVector(medlab::CTR3KinematicsInputVector kinematicsInputVector)
 {
-  currKinematicsInput_ = kinematicsInput;
+  currKinematicsInputVector_ = kinematicsInputVector;
   return true;
 }
-medlab::CTR3KinematicsInputVector CTR3Robot::GetCurrKinematicsInput()
+medlab::CTR3KinematicsInputVector CTR3Robot::GetCurrKinematicsInputVector()
 {
-  return currKinematicsInput_;
+  return currKinematicsInputVector_;
 }
 
 bool CTR3Robot::SetCurrQVec(RoboticsMath::Vector6d qVec)
@@ -70,6 +72,14 @@ medlab::InterpRet CTR3Robot::GetInterpolatedBackbone()
   return currInterpolatedBackbone_;
 }
 
+int CTR3Robot::GetNPts() {
+  return nPts_;
+}
+
+int CTR3Robot::GetNInterp() {
+  return nInterp_;
+}
+
 medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsInputVector newKinematicsInput)
 {
 
@@ -82,18 +92,17 @@ medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsIn
   double Stability;
   Stability = CTR::GetStability(ret1.y_final);
 
-  int nPts = ret1.arc_length_points.size();
+  nPts_ = ret1.arc_length_points.size();
   double* ptr = &ret1.arc_length_points[0];
-  Eigen::Map<Eigen::VectorXd> s(ptr, nPts);
+  Eigen::Map<Eigen::VectorXd> s(ptr, nPts_);
 
   Eigen::MatrixXd poseData = CTR3Robot::forwardKinematics(ret1);
 
-  int nInterp = 200;
-  medlab::InterpRet interpResults = interpolateBackbone(s, poseData, nInterp);
+  medlab::InterpRet interpResults = interpolateBackbone(s, poseData, nInterp_);
 
-  Eigen::MatrixXd poseDataOut(8, nInterp + nPts);
-  poseDataOut = Eigen::MatrixXd::Zero(8, nInterp + nPts);
-  Eigen::RowVectorXd ones(nInterp + nPts);
+  Eigen::MatrixXd poseDataOut(8, nInterp_ + nPts_);
+  poseDataOut = Eigen::MatrixXd::Zero(8, nInterp_ + nPts_);
+  Eigen::RowVectorXd ones(nInterp_ + nPts_);
   ones.fill(1);
   Eigen::VectorXd sOut = interpResults.s;
   poseDataOut.topRows(3) = interpResults.p;
@@ -141,7 +150,7 @@ medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsIn
   return kinoutput;
 }
 
-Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin) //TODO: we should not use auto..?
+Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin)
 {
 
   // Pick out arc length points

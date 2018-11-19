@@ -184,6 +184,8 @@ void kinStatusCallback(const std_msgs::Bool &fkmMsg)
 	}
 }*/
 
+endonasal_teleop::matrix8 markersMsg;
+
 Eigen::Matrix4d omniPose;
 Eigen::Matrix4d prevOmni;
 Eigen::Matrix4d curOmni;
@@ -330,56 +332,37 @@ int main(int argc, char *argv[])
         robot1Params.G = 60E9 / 2.0 / 1.33;
         robot1Params.L1 = 222.5E-3;
         robot1Params.Lt1 = robot1Params.L1 - 42.2E-3;
+        robot1Params.k1 = 1.0/63.5E-3;
         robot1Params.OD1 = 1.165E-3;
         robot1Params.ID1 = 1.067E-3;
         robot1Params.L2 = 163E-3;
         robot1Params.Lt2 = robot1Params.L2 - 38.0E-3;
+        robot1Params.k2 = 1.0/51.2E-3;
         robot1Params.OD2 = 2.0574E-3;
         robot1Params.ID2 = 1.6002E-3;
         robot1Params.L3 = 104.4E-3;
         robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
+        robot1Params.k3 = 1.0/71.4E-3;
         robot1Params.OD3 = 2.540E-3;
         robot1Params.ID3 = 2.248E-3;
 
         typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
         // Curvature of each tube
-        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun1( (1.0/63.5e-3)*Eigen::Vector2d::UnitX() );
-        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun2( (1.0/51.2e-3)*Eigen::Vector2d::UnitX() );
-        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun3( (1.0/71.4e-3)*Eigen::Vector2d::UnitX() );
-
-        // Material properties
-        double E = 60e9;
-        double G = 60e9 / 2.0 / 1.33;
-        // Tube 1 geometry
-        double L1 = 222.5e-3;
-        double Lt1 = L1 - 42.2e-3;
-        double OD1 = 1.165e-3;
-        double ID1 = 1.067e-3;
-        // Tube 2 geometry
-        double L2 = 163e-3;
-        double Lt2 = L2 - 38e-3;
-        double OD2 = 2.0574e-3;
-        double ID2 = 1.6002e-3;
-        //Tube 3 geometry
-        double L3 = 104.4e-3;
-        double Lt3 = L3 - 21.4e-3;
-        double OD3 = 2.540e-3;
-        double ID3 = 2.2479e-3;
+        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun1( (robot1Params.k1)*Eigen::Vector2d::UnitX() );
+        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun2( (robot1Params.k2)*Eigen::Vector2d::UnitX() );
+        CTR::Functions::constant_fun< CTR::Vector<2>::type > k_fun3( (robot1Params.k3)*Eigen::Vector2d::UnitX() );
 
         // Define tubes
         // Inputs: make_annular_tube( L, Lt, OD, ID, k_fun, E, G );
-        TubeType T1 = CTR::make_annular_tube( L1, Lt1, OD1, ID1, k_fun1, E, G );
-        TubeType T2 = CTR::make_annular_tube( L2, Lt2, OD2, ID2, k_fun2, E, G );
-        TubeType T3 = CTR::make_annular_tube( L3, Lt3, OD3, ID3, k_fun3, E, G );
+        TubeType T1 = CTR::make_annular_tube( robot1Params.L1, robot1Params.Lt1, robot1Params.OD1, robot1Params.ID1, k_fun1, robot1Params.E, robot1Params.G );
+        TubeType T2 = CTR::make_annular_tube( robot1Params.L2, robot1Params.Lt2, robot1Params.OD2, robot1Params.ID2, k_fun2, robot1Params.E, robot1Params.G );
+        TubeType T3 = CTR::make_annular_tube( robot1Params.L3, robot1Params.Lt3, robot1Params.OD3, robot1Params.ID3, k_fun3, robot1Params.E, robot1Params.G );
 
         // Assemble cannula
         auto cannula = std::make_tuple( T1, T2, T3 );
 
-        // Initialize CTR3Robot Instance with cannula
-//        CTR3Robot robot1(cannula);
-//        robot1.init();
-
+        // Initialize robot with controller
         ResolvedRatesController rr1(cannula);
         rr1.init();
 
@@ -402,6 +385,7 @@ int main(int argc, char *argv[])
         //ros::Publisher rr_status_pub = node.advertise<std_msgs::Bool>("rr_status", 1000);
         //ros::Publisher jointValPub = node.advertise<endonasal_teleop::config3>("joint_q", 1000);
         //ros::Publisher omniForcePub = node.advertise<geometry_msgs::Vector3>("Omniforce", 1000);
+        ros::Publisher needle_pub = node.advertise<endonasal_teleop::matrix8>("needle_position",10);
 	ros::Publisher pubEncoderCommand1 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB1/encoder_command", 1); // EC13
 	ros::Publisher pubEncoderCommand2 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB4/encoder_command", 1); // EC16
 
@@ -531,6 +515,54 @@ int main(int argc, char *argv[])
           // send ResolvedRates.step(desiredTwist) output to mapped motors >> mcb->setDesiredPosition()
 
 
+          // Maybe all of this should be nested inside a check for new joint message so we don't bog down com
+
+          ////
+          //// Publish visualizations to rviz
+          ////
+
+          CTR3Robot robot1 = rr1.GetRobot();
+          medlab::InterpRet robot1Backbone = robot1.GetInterpolatedBackbone();
+
+          int nPts = robot1.GetNPts();
+          int nInterp = robot1.GetNInterp();
+
+          for (int j=0; j<(nInterp+nPts); j++)
+          {
+            markersMsg.A1[j]=robot1Backbone.p(0,j); // X
+            markersMsg.A2[j]=robot1Backbone.p(1,j); // Y
+            markersMsg.A3[j]=robot1Backbone.p(2,j); // Z
+            markersMsg.A4[j]=robot1Backbone.q(0,j); // w
+            markersMsg.A5[j]=robot1Backbone.q(1,j); // x
+            markersMsg.A6[j]=robot1Backbone.q(2,j); // y
+            markersMsg.A7[j]=robot1Backbone.q(3,j); // z
+
+            RoboticsMath::Vector6d robot1CurQVec = robot1.GetCurrQVec();
+            Eigen::Vector3d robot1CurBeta = robot1CurQVec.bottomRows(3);
+            if (robot1CurBeta[1] > robot1Backbone.s[j] || robot1Params.L2+robot1CurBeta[1] < robot1Backbone.s[j])
+            {
+              markersMsg.A8[j] = 1; // green
+            }
+            else if ((robot1CurBeta[1] <= robot1Backbone.s[j] && robot1CurBeta[2] > robot1Backbone.s[j]) ||
+                     (robot1Params.L3 + robot1CurBeta[2] < robot1Backbone.s[j] && robot1Params.L2 + robot1CurBeta[1] >= robot1Backbone.s[j]))
+            {
+              markersMsg.A8[j] = 2; // red
+            }
+            else
+            {
+              markersMsg.A8[j] = 3; // blue
+            }
+          }
+
+          needle_pub.publish(markersMsg);
+
+          // sleep
+          ros::spinOnce();
+          r.sleep();
+        }
+
+        return 0;
+}
 
 //		if (new_kin_msg == 1)
 //		{
@@ -755,10 +787,4 @@ int main(int argc, char *argv[])
 
 //		}
 
-		// sleep
-		ros::spinOnce();
-		r.sleep();
-	}
 
-	return 0;
-}

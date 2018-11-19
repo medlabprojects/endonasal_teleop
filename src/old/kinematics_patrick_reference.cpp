@@ -385,7 +385,7 @@ interpRet interpolateBackbone(Eigen::VectorXd s_ref, Eigen::MatrixXd posedata_re
 
     Eigen::VectorXd xx_linspace(npts);
     xx_linspace.fill(0.0);
-    xx_linspace.setLinSpaced(npts,1.0,0.0);
+    xx_linspace.setLinSpaced(npts, 1.0, 0.0);
     Eigen::VectorXd xx_unsorted(npts_total);
     xx_unsorted << xx_linspace, zeroToOne;
     std::sort(xx_unsorted.data(),xx_unsorted.data()+xx_unsorted.size());
@@ -489,11 +489,6 @@ void rrStatusCallback(const std_msgs::Bool &bmsg)
 //        std::cout << "kinematics received a message from resolved rates" << std::endl << std::endl;
     }
 }
-
-
-
-
-
 
 
 int main(int argc, char *argv[])

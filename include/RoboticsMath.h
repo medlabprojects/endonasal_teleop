@@ -16,7 +16,6 @@ namespace RoboticsMath
         typedef Eigen::Matrix<double, 7, 1> Vector7d;
 	typedef Eigen::Matrix<double, 8, 1> Vector8d;
 
-
         double deg2rad(double degrees);
         double sgn(double x);
         double vectornorm(Eigen::Vector3d v);

@@ -75,4 +75,8 @@ namespace medlab
 //                RoboticsMath::Matrix6d jBody;		// Body Jacobian
         };
 
+        struct MarkersOut {
+
+        };
+
 }

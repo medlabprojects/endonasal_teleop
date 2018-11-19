@@ -91,8 +91,8 @@ Eigen::Vector4d RoboticsMath::rotm2quat(Eigen::Matrix3d R)
         double trace = R(0, 0) + R(1, 1) + R(2, 2);
         if (trace > 0)
         {
-                double s = 0.5*sqrt(trace + 1.0);
-                Q(0) = s; //w eqn
+                double s = 2*sqrt(trace + 1.0);
+                Q(0) = 0.25*s; //w eqn
                 Q(1) = (R(2, 1) - R(1, 2)) / s; //x eqn
                 Q(2) = (R(0, 2) - R(2, 0)) / s; //y eqn
                 Q(3) = (R(1, 0) - R(0, 1)) / s; //z eqn
@@ -101,7 +101,7 @@ Eigen::Vector4d RoboticsMath::rotm2quat(Eigen::Matrix3d R)
         {
                 if (R(0, 0)>R(1, 1) && R(0, 0)>R(2, 2))
                 {
-                        double s = 0.5*sqrt(1.0 + R(0, 0) - R(1, 1) - R(2, 2));
+                        double s = 2*sqrt(1.0 + R(0, 0) - R(1, 1) - R(2, 2));
                         Q(0) = (R(2, 1) - R(1, 2))/s; //w eqn
                         Q(1) = 0.25*s; //x eqn
                         Q(2) = (R(0, 1) + R(1, 0))/s; //y eqn
@@ -109,7 +109,7 @@ Eigen::Vector4d RoboticsMath::rotm2quat(Eigen::Matrix3d R)
                 }
                 else if (R(1, 1)>R(2, 2))
                 {
-                        double s = 0.5*sqrt(1.0 + R(1, 1) - R(0, 0) - R(2, 2));
+                        double s = 2*sqrt(1.0 + R(1, 1) - R(0, 0) - R(2, 2));
                         Q(0) = (R(0, 2) - R(2, 0))/s; //w eqn
                         Q(1) = (R(0, 1) + R(1, 0))/s; //x eqn
                         Q(2) = 0.25*s; //y eqn
@@ -117,7 +117,7 @@ Eigen::Vector4d RoboticsMath::rotm2quat(Eigen::Matrix3d R)
                 }
                 else
                 {
-                        double s = 0.5*sqrt(1.0 + R(2, 2) - R(0, 0) - R(1, 1));
+                        double s = 2*sqrt(1.0 + R(2, 2) - R(0, 0) - R(1, 1));
                         Q(0) = (R(1, 0) - R(0, 1))/s; //w eqn
                         Q(1) = (R(0, 2) + R(2, 0))/s; //x eqn
                         Q(2) = (R(1, 2) + R(2, 1))/s; //y eqn
@@ -305,7 +305,7 @@ Eigen::Matrix<double, 4, Eigen::Dynamic> RoboticsMath::quatInterp(Eigen::Matrix<
         Eigen::MatrixXd quatInterpolated(4, N);
         quatInterpolated.fill(0);
 
-        for (int i = 0; i<N; i += 1)
+        for (int i = 0; i<N; i++)
         {
                 // setLinSpaced sometimes returns very small negative number instead of 0
                 if (interpArcLengths(i) < 1E-10)

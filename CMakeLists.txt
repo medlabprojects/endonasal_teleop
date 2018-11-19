@@ -207,8 +207,8 @@ find_package(Qt5Gui)
 
 ## Declare a C++ executable
 add_executable(endonasal_teleop src/endonasal_teleop.cpp src/RoboticsMath.cpp src/CTR3Robot.cpp src/ResolvedRatesController.cpp)
-add_executable(tf_broadcaster src/tf_broadcaster.cpp)
-add_executable(needle_broadcaster src/needle_broadcaster.cpp)
+#add_executable(tf_broadcaster src/tf_broadcaster.cpp)
+#add_executable(needle_broadcaster src/needle_broadcaster.cpp)
 add_executable(workspace_display src/workspace_display.cpp)
 
 ##add_executable(resolved_rates src/resolved_rates.cpp)
@@ -220,8 +220,8 @@ add_executable(workspace_display src/workspace_display.cpp)
 # add_dependencies(endonsasal_teleop_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
-target_link_libraries(needle_broadcaster ${catkin_LIBRARIES})
+#target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
+#target_link_libraries(needle_broadcaster ${catkin_LIBRARIES})
 target_link_libraries(workspace_display ${catkin_LIBRARIES} CannulaKinematics)
 target_link_libraries(endonasal_teleop ${catkin_LIBRARIES} CannulaKinematics)
 

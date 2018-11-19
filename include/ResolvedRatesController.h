@@ -21,15 +21,14 @@ public:
   ~ResolvedRatesController();
   void init();		// go online
  /* RoboticsMath::Matrix6d step(SomeData::Type desiredTwist);*/ // output of this should be joint positions [alpha, beta]
-  RoboticsMath::Matrix6d step();
+  RoboticsMath::Vector6d step(RoboticsMath::Vector6d desTwist);
   bool SetTrackingGain(double LambdaTracking);
   bool SetDampingGain(double LambdaDamping);
   bool SetJointLimitsGain(double LambdaJL);
   bool SetCurInputDevice();
-  bool SetCurCTR3Robot();
   //bool SetInputDeviceTransform(Matrix4d TRegistration); //TODO: all preprocessing of input device twist should be done outside of this class
-
   std::vector<ResolvedRatesController::LIMIT_FLAG> GetLimitFlags(){return currentLimitFlags_;} //TODO: implement this
+  CTR3Robot GetRobot();
 
 private:
   CTR3Robot robot_;
@@ -40,7 +39,6 @@ private:
   RoboticsMath::Matrix6d WJointLims_;
   medlab::InterpRet InterpolatedBackboneCur_;
   double rosLoopRate_;
-  // TODO: add pointer to current CTR3Robot this is in charge of
 
   RoboticsMath::Vector6d saturateJointVelocities(RoboticsMath::Vector6d delta_qx, int node_freq);
   RoboticsMath::Vector6d transformBetaToX(RoboticsMath::Vector6d qbeta, Eigen::Vector3d L);

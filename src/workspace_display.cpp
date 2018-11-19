@@ -157,7 +157,7 @@ int main(int argc, char** argv)
         seg.color.g = 0.0;
         seg.color.b = 0.0;
 
-        seg.mesh_resource = "package://endonasal_teleop/src/everythingSmoothedShrink.stl";
+        //seg.mesh_resource = "package://endonasal_teleop/src/everythingSmoothedShrink.stl";
         seg.lifetime = ros::Duration();
         seg_pub.publish(seg);
 

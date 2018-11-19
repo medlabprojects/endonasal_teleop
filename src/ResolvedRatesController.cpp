@@ -12,9 +12,10 @@ ResolvedRatesController::~ResolvedRatesController()
 
 }
 
-void ResolvedRatesController::init()  //TODO: CTR3Robot is an input
+void ResolvedRatesController::init()
 {
   // Construct w/ CTR3Robot with params and base frame
+
   // Set Input Device
   // Resolved Rates Prep --> extract ptip, qtip, Jtip, calc WJointLims
 
@@ -23,20 +24,16 @@ void ResolvedRatesController::init()  //TODO: CTR3Robot is an input
   robot_.init(qHome);
 }
 
-RoboticsMath::Matrix6d ResolvedRatesController::step()  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
+RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
 {
   currentLimitFlags_.clear();
-  // enum type that gets set depending on if hit joint limits or not would be useful for debugging
-  //limitFlags_.clear();
-  //limitFlags_.push_back(); //input to this is ResolvedRatesController::LIMIT flag
-  // have different error messages for 'tube1saturated','tube2saturated', etc.
 
   // TODO: also have a converged flag or something to let us know that the robot is where we commanded and not trying its best
   // --> save this as a member variable and have a getter
-  RoboticsMath::Matrix6d ret;
-  ret = RoboticsMath::Matrix6d::Identity();
+  RoboticsMath::Vector6d desQ;
+//  desQ = [desPsi1 desPsi2 desPsi3 desBeta1 desBeta2 desBeta3]
 
-  return ret;
+  return desQ;
 }
 
 bool ResolvedRatesController::SetTrackingGain(double LambdaTracking)
@@ -74,6 +71,11 @@ bool ResolvedRatesController::SetDampingGain(double LambdaDamping)
 //{
 //	return true;
 //}
+
+CTR3Robot ResolvedRatesController::GetRobot()
+{
+  return robot_;
+}
 
 RoboticsMath::Vector6d ResolvedRatesController::saturateJointVelocities(RoboticsMath::Vector6d delta_qx, int node_freq)
 {
@@ -194,14 +196,6 @@ medlab::WeightingRet ResolvedRatesController::computeWeightingMatrix(Eigen::Vect
   output.dh = dh;
   return output;
 }
-
-
-//TODO: implement enum types
-//std::vector<ResolvedRatesController::LIMIT_FLAG> ResolvedRatesController::GetLimitFlags()
-//{
-//	
-//}
-
 
 Eigen::Vector3d ResolvedRatesController::limitBetaValsSimple(Eigen::Vector3d x_in, Eigen::Vector3d L)
 {
