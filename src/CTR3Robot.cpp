@@ -296,3 +296,67 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
 
 }
 
+medlab::WeightingRet CTR3Robot::computeStabilityWeightingMatrix(RoboticsMath::Vector6d qVec, double S, double sThreshold, double alphaS)
+{
+  RoboticsMath::Matrix6d W = (exp(1 / (S - sThreshold)) - 1) * RoboticsMath::Matrix6d::Identity();
+  RoboticsMath::Vector6d vS = RoboticsMath::Vector6d::Zero();
+  RoboticsMath::Vector6d dSdq = RoboticsMath::Vector6d::Zero();
+
+  double rotationalStep = 0.05*M_PI / 180.0;
+  double translationalStep = 1E-5;
+  double step;
+
+  RoboticsMath::Vector6d qFD;
+  qFD.block<3,1>(0,0) = qVec.block<3,1>(0,0);
+  qFD.block<3,1>(3,0) = qVec.block<3,1>(3,0);
+
+  medlab::CTR3KinematicsInputVector qKinematicsUpper;
+  medlab::CTR3KinematicsInputVector qKinematicsLower;
+
+  for (int i=0; i < 6; i++)
+  {
+    RoboticsMath::Vector6d direction = RoboticsMath::Vector6d::Zero();
+    direction(i) = 0;
+
+    if (i < 3)
+    {
+      step = rotationalStep;
+    }
+    else
+    {
+      step = translationalStep;
+    }
+
+    RoboticsMath::Vector6d qFDUpper = qFD + step*direction;
+    RoboticsMath::Vector6d qFDLower = qFD - step*direction;
+
+    qKinematicsUpper.PsiL = qFDUpper.block<3,1>(0,0);
+    qKinematicsUpper.Beta = qFDUpper.block<3,1>(3,0);
+    qKinematicsUpper.Ftip << 0.0, 0.0, 0.0;
+    qKinematicsUpper.Ttip << 0.0, 0.0, 0.0;
+
+    qKinematicsLower.PsiL = qFDLower.block<3,1>(0,0);
+    qKinematicsLower.Beta = qFDLower.block<3,1>(3,0);
+    qKinematicsLower.Ftip << 0.0, 0.0, 0.0;
+    qKinematicsLower.Ttip << 0.0, 0.0, 0.0;
+
+    auto retUpper = CTR::Kinematics_with_dense_output(cannula_, qKinematicsUpper, medlab::OType());
+    auto retLower = CTR::Kinematics_with_dense_output(cannula_, qKinematicsLower, medlab::OType());
+
+    double SUpper = CTR::GetStability(retUpper.y_final);
+    double SLower = CTR::GetStability(retLower.y_final);
+
+    dSdq(i) = (SUpper - SLower) / (2*step);
+
+  }
+
+  vS = alphaS*dSdq;
+
+  WStability_ = W;
+  vS_ = vS;
+
+  medlab::WeightingRet output;
+  output.W = W;
+  output.dh = vS;
+  return output;
+}

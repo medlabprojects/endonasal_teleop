@@ -37,6 +37,7 @@ private:
   RoboticsMath::Matrix6d WTracking_;
   RoboticsMath::Matrix6d WDamping_;
   RoboticsMath::Matrix6d WJointLims_;
+  RoboticsMath::Matrix6d WStability_;
   medlab::InterpRet InterpolatedBackboneCur_;
   double rosLoopRate_;
 
@@ -44,7 +45,7 @@ private:
   RoboticsMath::Vector6d transformBetaToX(RoboticsMath::Vector6d qbeta, Eigen::Vector3d L);
   RoboticsMath::Vector6d transformXToBeta(RoboticsMath::Vector6d qx, Eigen::Vector3d L);
   double dhFunction(double xmin, double xmax, double x);
-  medlab::WeightingRet computeWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda);
+  medlab::WeightingRet computeDampingWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda);
   Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d x_in, Eigen::Vector3d L);
   Eigen::Vector3d limitBetaValsBimanualAlgorithm(Eigen::Vector3d Beta_in, Eigen::Vector3d L_in);
   RoboticsMath::Vector6d scaleInputDeviceVelocity(RoboticsMath::Vector6d desTwistDelta);

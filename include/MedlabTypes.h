@@ -60,7 +60,7 @@ namespace medlab
 
         struct WeightingRet { // Joint Limits Weighting Matrix (Configuration Dependent)
                 RoboticsMath::Matrix6d W;
-                Eigen::Vector3d dh;
+                Eigen::VectorXd dh;
         };
 
         struct KinOut {  // used by ResolvedRates.init() -> Online Resolved Rates Loop

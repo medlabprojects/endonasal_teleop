@@ -152,7 +152,7 @@ double ResolvedRatesController::dhFunction(double xmin, double xmax, double x)
   return dh;
 }
 
-medlab::WeightingRet ResolvedRatesController::computeWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda)
+medlab::WeightingRet ResolvedRatesController::computeDampingWeightingMatrix(Eigen::Vector3d x, Eigen::Vector3d dhPrev, Eigen::Vector3d L, double lambda)
 {
   RoboticsMath::Matrix6d W = Eigen::MatrixXd::Identity(6, 6);
 
