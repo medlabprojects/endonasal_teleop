@@ -32,7 +32,7 @@ void ResolvedRatesController::init()
   dhPrev_ = Eigen::Vector3d::Zero();
 
   // Compute WJointLims_
-  //Eigen::Vector3d betas = qHome.bottomRows(3);
+  //Eigen::Vector3d betas = qHome.bottomRows(3);        // TODO: we should be consistent with function name Vector3d input vs Vector6d input (FIX)
   medlab::CTR3RobotParams params = robot_.GetCurRobotParams();
   Eigen::Vector3d L;
   L << params.L1, params.L2, params.L3;
@@ -43,13 +43,26 @@ void ResolvedRatesController::init()
   WJointLims_ = JLWeightingRet.W;
   dhPrev_ = JLWeightingRet.dh;
 
-
-
+  // Set Vmag related stuff
+  vMax_ = 5E-4; // 0.5mm/sec
+  vMin_ = 1E-6;
+  eMax_ = 1E-3;
+  eMin_ = 1E-6;
+  convergeRadius_ = 1E-8;
 }
 
 RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
 {
   currentLimitFlags_.clear();
+
+  medlab::KinOut kin = robot_.currKinematics;
+
+  Eigen::Vector3d posError = desTwist.topRows<3>();
+  if (posError.norm() > convergeRadius_)
+  {
+    double vMag = computeVMag(posError);
+    posError = vMag*posError / posError.norm();
+  }
 
   //  desQ = [desPsi1 desPsi2 desPsi3 desBeta1 desBeta2 desBeta3]
   RoboticsMath::Vector6d desQ;
@@ -81,11 +94,6 @@ bool ResolvedRatesController::SetDampingGain(double LambdaDamping)
   WDamping_(5, 5) = LambdaDamping*5.0E8;
   return true;
 }
-
-//bool ResolvedRatesController::SetInputDeviceTransform(Eigen::Matrix4d TRegistration)
-//{
-//	return true;
-//}
 
 CTR3Robot ResolvedRatesController::GetRobot()
 {
@@ -355,3 +363,36 @@ RoboticsMath::Vector6d ResolvedRatesController::scaleInputDeviceVelocity(Robotic
 
   return scaledDesTwistDelta;
 }
+
+double ResolvedRatesController::computeVMag(Eigen::Vector3d e)
+{
+  double vMag;
+  double eNorm = e.norm();
+  if (eNorm < convergeRadius_)
+  {
+    vMag = 0.0;
+  }
+  else if (eNorm >= convergeRadius_ && eNorm < eMin_)
+  {
+    vMag = vMin_;
+  }
+  else if (eNorm >= eMin_ && eNorm < eMax_)
+  {
+    double m = (vMax_ - vMin_) / (eMax_ - eMin_);
+    vMag = m*(eNorm - eMax_) + vMax_;
+  }
+  else
+  {
+    vMag = vMax_;
+  }
+  return vMag;
+}
+
+
+
+
+
+
+
+
+

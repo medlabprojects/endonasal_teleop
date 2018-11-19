@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
   Eigen::Matrix4d OmniReg = Eigen::Matrix4d::Identity();
   Eigen::MatrixXd RotY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
   Mtransform::SetRotation(OmniReg,RotY);
-  Eigen::Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
+  //Eigen::Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
   Eigen::Vector3d zeroVec;
   zeroVec.fill(0);
 
@@ -238,10 +238,7 @@ int main(int argc, char *argv[])
   ResolvedRatesController rr1(cannula,robot1Params);
   rr1.init();
 
-  //
   // -------------------------------------------------------------------------------
-
-
   //        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
   //        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
   //        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
@@ -250,8 +247,6 @@ int main(int argc, char *argv[])
   //        McbRos* motorBoard1;
   //        std::string motorBoard1NodeName = ui_.lineEdit_nodeName->text().toStdString();
   //        motorBoard1->init(motorBoard1NodeName);
-
-  //	prevOmni = omniPose;
 
   // -------------------------------------------------------------------------------
   // SUBSCRIBERS
@@ -307,15 +302,9 @@ int main(int argc, char *argv[])
       RoboticsMath::Vector6d desTwist;
       desTwist = InputDeviceTwist(omniDeltaOmniPenCoords);
 
-      // desTwist = InputDeviceTwist(inputDevice,deviceDeltaInDeviceCoords)
-
-
-
     }
 
-    ////
     //// Publish visualizations to rviz
-    ////
 
     CTR3Robot robot1 = rr1.GetRobot();
     medlab::InterpRet robot1Backbone = robot1.GetInterpolatedBackbone();
@@ -335,7 +324,8 @@ int main(int argc, char *argv[])
 
       RoboticsMath::Vector6d robot1CurQVec = robot1.GetCurrQVec();
       Eigen::Vector3d robot1CurBeta = robot1CurQVec.bottomRows(3);
-      if (robot1CurBeta[1] > robot1Backbone.s[j] || robot1Params.L2+robot1CurBeta[1] < robot1Backbone.s[j])
+      if (robot1CurBeta[1] > robot1Backbone.s[j] ||
+          robot1Params.L2+robot1CurBeta[1] < robot1Backbone.s[j])
       {
         markersMsg.A8[j] = 1; // green
       }
@@ -359,228 +349,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-
-//		if (new_kin_msg == 1)
-//		{
-//			//new_kin_msg = 0;
-//			// take a "snapshot" of the current values from the kinematics and Omni for this loop iteration
-//			curOmni = omniPose;
-//			ptip = ptipcur;
-//			qtip = qtipcur;
-//			alpha = alphacur;
-//			J = Jcur;
-//			Rtip = quat2rotm(qtip);
-//			robotTipFrame = assembleTransformation(Rtip, ptip);
-
-//			// send commands to motorboards
-//			double offset_trans_inner = 0; // -46800.0;
-//			double offset_trans_middle = 0; // -36080.0;
-//			double offset_trans_outer = 0; // -290.0;
-//			double scale_rot = 16498.78; 		// counts/rad
-//			double scale_trans = 6802.16*1e3;		// counts/m
-//			double scale_trans_outer = 2351.17*1e3;	// counts/m
-
-//			medlab_motor_control_board::McbEncoders enc1;
-//			medlab_motor_control_board::McbEncoders enc2;
-
-//			//		enc1.count[0] = (int)(q_msg.joint_q[3] * scale_trans - offset_trans_inner); // inner translation
-//			enc1.count[0] = (int)((q_vec[3] - qstart.Beta[0]) * scale_trans); // inner translation
-//			enc1.count[1] = (int)(alpha[0] * scale_rot); // inner rotation
-//			enc1.count[2] = (int)(alpha[2] * scale_rot); // outer rotation
-//														 //		enc1.count[3] = (int)(q_msg.joint_q[4] * scale_trans - offset_trans_middle); // middle translation
-//			enc1.count[3] = (int)((q_vec[4] - qstart.Beta[1]) * scale_trans);  // middle translation
-//			enc1.count[4] = (int)(alpha[1] * scale_rot); // middle rotation
-//			enc1.count[5] = 0; // accessory
-
-//							   //		enc2.count[0] = (int)(q_msg.joint_q[5] * scale_trans_outer - offset_trans_outer); // external translation
-//			enc2.count[0] = 0; // (int)((q_vec[5] - qstart.Beta[2]) * scale_trans_outer); 	// outer translation
-//			enc2.count[1] = 0;
-//			enc2.count[2] = (int)((q_vec[5] - qstart.Beta[2]) * scale_trans_outer); 	// outer translation;
-//			enc2.count[3] = 0;
-//			enc2.count[4] = 0;
-//			enc2.count[5] = 0;
-
-//			pubEncoderCommand1.publish(enc1);
-//			pubEncoderCommand2.publish(enc2);
-
-//			if (buttonState == 1) //must clutch in button for any motions to happen
-//			{
-//				//std::cout << "J(beta) = " << std::endl << J << std::endl << std::endl;
-//				std::cout << "ptip = " << std::endl << ptip.transpose() << std::endl << std::endl;
-//				//std::cout << "qtip = " << std::endl << qtip.transpose() << std::endl << std::endl;
-
-//				Matrix4d ROmniFrameAtClutch; // Rotation of the Omni frame tip at clutch in
-
-//											 //furthermore, if this is the first time step of clutch in, we need to save the robot pose & the omni pose
-//				if (justClutched == true)
-//				{
-//					robotTipFrameAtClutch = robotTipFrame;
-//					omniFrameAtClutch = omniPose;
-//					ROmniFrameAtClutch = assembleTransformation(omniFrameAtClutch.block(0, 0, 3, 3), zerovec);
-//					Tregs = assembleTransformation(Rtip.transpose(), zerovec);
-//					std::cout << "robotTipFrameAtClutch = " << std::endl << robotTipFrameAtClutch << std::endl << std::endl;
-//					std::cout << "omniFrameAtClutch = " << std::endl << omniFrameAtClutch << std::endl << std::endl;
-//					justClutched = false; // next time, skip this step
-//				}
-
-//				// find change in omni position and orientation from the clutch pose
-//				omniDelta_omniCoords = Mtransform::Inverse(ROmniFrameAtClutch.transpose())*Mtransform::Inverse(omniFrameAtClutch)*curOmni*ROmniFrameAtClutch.transpose();
-//				//omniDelta_omniCoords = Mtransform::Inverse(omniFrameAtClutch)*curOmni;
-//				// std::cout << "omniDelta_omniCoords = " << std::endl << omniDelta_omniCoords << std::endl << std::endl;
-
-//				// expressed in cannula base frame coordinates
-//				omniDelta_cannulaCoords = OmniRegInv*omniDelta_omniCoords*OmniReg;
-
-//				// convert position units mm -> m
-//				omniDelta_cannulaCoords.block(0, 3, 3, 1) = omniDelta_cannulaCoords.block(0, 3, 3, 1) / 1000.0;
-
-//				// scale position through scaling ratio
-//				omniDelta_cannulaCoords.block(0, 3, 3, 1) = scale_factor*omniDelta_cannulaCoords.block(0, 3, 3, 1);
-
-//				// scale orientation through scaling ratio (if it is large enough)
-//				trace = omniDelta_cannulaCoords(0, 0) + omniDelta_cannulaCoords(1, 1) + omniDelta_cannulaCoords(2, 2);
-//				acosArg = 0.5*(trace - 1);
-//				if (acosArg>1.0) { acosArg = 1.0; }
-//				if (acosArg<-1.0) { acosArg = -1.0; }
-//				theta = acos(acosArg);
-//				if (fabs(theta)>1.0e-3)
-//				{
-//					Eigen::Matrix3d Rdelta;
-//					Rdelta = omniDelta_cannulaCoords.block(0, 0, 3, 3);
-//					logR = theta / (2 * sin(theta))*(Rdelta - Rdelta.transpose());
-//					logRmag = logR(2, 1)*logR(2, 1) + logR(1, 0)*logR(1, 0) + logR(0, 2)*logR(0, 2);
-//					logRmag *= 0.8;
-//					logR *= 0.8;
-//					if (logRmag > 1.0e-3)
-//					{
-//						Rdelta = Eigen::MatrixXd::Identity(3, 3) + sin(logRmag) / logRmag*logR + (1 - cos(logRmag)) / (logRmag*logRmag)*logR*logR;
-//						Mtransform::SetRotation(omniDelta_cannulaCoords, Rdelta);
-//					}
-//				}
-
-//				// std::cout << "omniDelta_cannulaCoords = " << std::endl << omniDelta_cannulaCoords << std::endl << std::endl;
-//				//std::cout << "robotTipFrame = " << std::endl << robotTipFrame << std::endl << std::endl;
-
-//				// compute the desired robot motion from the omni motion
-//				robotDesFrameDelta = Mtransform::Inverse(robotTipFrame) * robotTipFrameAtClutch * Tregs * omniDelta_cannulaCoords * Mtransform::Inverse(Tregs);
-
-//				// convert to twist coordinates ("wedge" operator)
-//				///*
-//				robotDesTwist[0] = robotDesFrameDelta(0, 3); //v_x
-//				robotDesTwist[1] = robotDesFrameDelta(1, 3); //v_y
-//				robotDesTwist[2] = robotDesFrameDelta(2, 3); //v_z
-//				robotDesTwist[3] = robotDesFrameDelta(2, 1); //w_x
-//				robotDesTwist[4] = robotDesFrameDelta(0, 2); //w_y
-//				robotDesTwist[5] = robotDesFrameDelta(1, 0); //w_z
-//															 //*/
-
-//															 /*
-//															 robotDesTwist[0]=0.0; //v_x
-//															 robotDesTwist[1]=0.0; //v_y
-//															 robotDesTwist[2]=0.0; //v_z
-//															 robotDesTwist[3]=0.0; //w_x
-//															 robotDesTwist[4]=0.0; //w_y
-//															 robotDesTwist[5]=0.1; //w_z
-//															 */
-
-//				std::cout << "robotDesTwist = " << std::endl << robotDesTwist.transpose() << std::endl << std::endl;
-//				robotDesTwist = scaleOmniVelocity(robotDesTwist);
-//				std::cout << "scaled robotDesTwist = " << std::endl << robotDesTwist.transpose() << std::endl << std::endl;
-
-//				// position control only:
-//				//                Eigen::Vector3d delta_x = robotDesTwist.head(3);
-//				//                Eigen::Matrix<double,3,6> Jpos = J.topRows(3);
-//				//                A = (Jpos.transpose()*Jpos + 1e-4*Eigen::MatrixXd::Identity(6,6));
-//				//                Jstar = A.inverse()*Jpos.transpose();
-
-//				//                // position and orientation control:
-//				//                A = J.transpose()*J + 1e-6*Eigen::MatrixXd::Identity(6,6);
-//				//                Jstar = A.inverse()*J.transpose();
-
-//				//                //main resolved rates update
-
-//				//                delta_q = J.colPivHouseholderQr().solve(robotDesTwist);
-//				//                delta_q = Jstar*delta_x;
-//				//                delta_q = Jstar*robotDesTwist;
-//				//                q_vec = q_vec + delta_q;
-
-//				// same as what's on the bimanual
-//				/*Eigen::Matrix<double,6,6> K = J.transpose()*W_tracking*J + W_damping;
-//				Vector6d V = J.transpose()*W_tracking*robotDesTwist;
-//				delta_q = K.partialPivLu().solve(V);
-//				delta_q = saturateJointVelocities(delta_q,rosLoopRate);
-//				q_vec = q_vec + delta_q;
-//				*/
-//				//std::cout << "delta_q = "  << std::endl << delta_q.transpose() << std::endl << std::endl;
-
-//				// Check if valid betas
-//				//Vector6d qx_vec = transformBetaToX(q_vec,L);
-//				//qx_vec.tail(3) = limitBetaValsSimple(qx_vec.tail(3),L);
-//				//q_vec = transformXToBeta(qx_vec,L);
-
-//				//                // Transformation from qbeta to qx:
-//				Eigen::Matrix<double, 6, 6> Jx = J*dqbeta_dqx;
-//				//std::cout << "Jx = " << std::endl << Jx << std::endl << std::endl;
-//				Vector6d qx_vec = transformBetaToX(q_vec, L);
-
-//				// Joint limit avoidance weighting matrix
-//				weightingRet Wout = getWeightingMatrix(qx_vec.tail(3), dhPrev, L, lambda_jointlim);
-//				Eigen::Matrix<double, 6, 6> W_jointlim = Wout.W;
-//				dhPrev = Wout.dh; // and save this dh value for next time
-
-//								  // Resolved rates update
-//				Eigen::Matrix<double, 6, 6> A = Jx.transpose()*W_tracking*Jx + W_damping + W_jointlim;
-//				Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
-//				//Eigen::Matrix<double,6,6> A = Jx.transpose()*W_tracking*Jx;
-//				//Vector6d b = Jx.transpose()*W_tracking*robotDesTwist;
-//				delta_qx = A.partialPivLu().solve(b);
-//				//std::cout <<"delta_qx: "<< delta_qx.transpose() << std::endl << std::endl;
-
-//				//delta_qx = saturateJointVelocities(delta_qx, rosLoopRate);
-//				qx_vec = qx_vec + delta_qx;
-
-//				// Correct joint limit violations
-//				qx_vec.tail(3) = limitBetaValsSimple(qx_vec.tail(3), L);
-
-//				//                //            Eigen::Matrix<double,6,6> K1 = Jx.transpose()*W_tracking*Jx + W_damping;
-//				//                //            Vector6d V = Jx.transpose()*W_tracking*robotDesTwist;
-//				//                //            Vector6d delta_qx = K1.partialPivLu().solve(V);
-//				//                qx_vec = qx_vec + delta_qx;
-
-//				//                std::cout << "delta_qx = " << delta_qx << std::endl << std::endl;
-//				//                std::cout << "qx_vec = " << qx_vec << std::endl << std::endl;
-
-//				// Transform qbeta back from qx
-//				q_vec = transformXToBeta(qx_vec, L);
-//				//std::cout << "q_vec = " << std::endl << q_vec.transpose() << std::endl;
-//				std::cout << "----------------------------------------------------" << std::endl << std::endl;
-
-//				prevOmni = curOmni;
-
-//				for (int h = 0; h<6; h++)
-//				{
-//					q_msg.joint_q[h] = q_vec(h);
-//					q_msg.joint_q[h + 6] = 0;
-//				}
-//				rrUpdateStatusMsg.data = true;
-//			}
-
-//			else    // if the button isn't clutched, just send out the current joint values to kinematics
-//			{
-//				for (int h = 0; h<6; h++)
-//				{
-//					q_msg.joint_q[h] = q_vec(h);
-//					q_msg.joint_q[h + 6] = 0;
-//				}
-//				rrUpdateStatusMsg.data = true;
-//			}
-
-//			// publish
-//			jointValPub.publish(q_msg);
-//			rr_status_pub.publish(rrUpdateStatusMsg);
-//			omniForcePub.publish(omniForce);
-
-
-//		}
-
-

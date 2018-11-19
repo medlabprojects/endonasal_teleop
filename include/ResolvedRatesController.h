@@ -44,6 +44,14 @@ private:
   RoboticsMath::Matrix6d WStability_;
   medlab::InterpRet InterpolatedBackboneCur_;
   double rosLoopRate_;
+  bool instabilityAvoidance_; // using instability avoidance?
+
+  double vMax_;
+  double vMin_;
+  double eMax_;
+  double eMin_;
+  double convergeRadius_;
+
 
   RoboticsMath::Vector6d saturateJointVelocities(RoboticsMath::Vector6d delta_qx, int node_freq);
   RoboticsMath::Vector6d transformBetaToX(RoboticsMath::Vector6d qbeta, Eigen::Vector3d L);
@@ -53,5 +61,6 @@ private:
   Eigen::Vector3d limitBetaValsSimple(Eigen::Vector3d x_in, Eigen::Vector3d L);
   Eigen::Vector3d limitBetaValsBimanualAlgorithm(Eigen::Vector3d Beta_in, Eigen::Vector3d L_in);
   RoboticsMath::Vector6d scaleInputDeviceVelocity(RoboticsMath::Vector6d desTwistDelta);
+  double computeVMag(Eigen::Vector3d e);
 
 };
