@@ -44,16 +44,15 @@ void ResolvedRatesController::init()
   dhPrev_ = JLWeightingRet.dh;
 
 
+
 }
 
 RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
 {
   currentLimitFlags_.clear();
 
-  // TODO: also have a converged flag or something to let us know that the robot is where we commanded and not trying its best
-  // --> save this as a member variable and have a getter
+  //  desQ = [desPsi1 desPsi2 desPsi3 desBeta1 desBeta2 desBeta3]
   RoboticsMath::Vector6d desQ;
-//  desQ = [desPsi1 desPsi2 desPsi3 desBeta1 desBeta2 desBeta3]
 
   return desQ;
 }
