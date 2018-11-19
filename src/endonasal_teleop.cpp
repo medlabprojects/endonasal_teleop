@@ -71,121 +71,14 @@
 #include <vector>
 #include <cmath>
 
-/*
- / NAMESPACES
-using namespace rapidxml;
-using namespace Eigen;
-using namespace CTR;
-using namespace CTR::Functions;
-using std::tuple;
-using namespace std;
-
-// TYPEDEFS
-typedef Eigen::Matrix<double, 4, 4> Matrix4d;
-typedef Eigen::Matrix<double, 6, 6> Matrix6d;
-typedef Eigen::Matrix<double, 7, 1> Vector7d;
-typedef Eigen::Matrix<double, 6, 1> Vector6d;
-typedef tuple < Tube< constant_fun< Vector2d > >,
-				Tube< constant_fun< Vector2d > >,
-				Tube< constant_fun< Vector2d > > > Cannula3;
-typedef constant_fun<Eigen::Vector2d> CurvFun;
-typedef std::tuple< Tube<CurvFun>, Tube<CurvFun>, Tube<CurvFun> > CannulaT;
-typedef DeclareOptions< Option::ComputeJacobian, Option::ComputeGeometry, Option::ComputeStability, Option::ComputeCompliance>::options OType;
-
-struct Configuration3
-{
-	Eigen::Vector3d	PsiL;
-	Eigen::Vector3d	Beta;
-	Eigen::Vector3d Ftip;
-	Eigen::Vector3d	Ttip;
-};
-
-// GLOBAL VARIABLES NEEDED FOR RESOLVED RATES
-geometry_msgs::Vector3 omniForce;
-
-Eigen::Vector3d ptipcur; // use for continually updated message value
-Eigen::Vector4d qtipcur;
-Eigen::Vector3d alphacur;
-Matrix6d Jcur;
-bool new_kin_msg = 0;
-*/
-
 // ---------------------------------------------------------------
+// DEF GLOBALS
 // ---------------------------------------------------------------
 
-
-/*
-// SERVICE CALL FUNCTION DEFINITION ------------------------------
-
-bool startingConfig(endonasal_teleop::getStartingConfig::Request &req, endonasal_teleop::getStartingConfig::Response &res)
-{
-	std::cout << "Retrieving the starting configuration..." << std::endl << std::endl;
-
-	Configuration3 qstart;
-	qstart.PsiL = Eigen::Vector3d::Zero();
-	qstart.Beta << -160.9e-3, -127.2e-3, -86.4e-3;
-	qstart.Ftip = Eigen::Vector3d::Zero();
-	qstart.Ttip = Eigen::Vector3d::Zero();
-
-	for (int i = 0; i<3; i++)
-	{
-		res.joint_q[i] = qstart.PsiL[i];
-		res.joint_q[i + 3] = qstart.Beta[i];
-		res.joint_q[i + 6] = qstart.Ftip[i];
-		res.joint_q[i + 9] = qstart.Ttip[i];
-	}
-
-	return true;
-}
-
-
-// MESSAGE CALLBACK FUNCTION DEFINITIONS ---------------------------
-
-endonasal_teleop::kinout tmpkin;
-void kinCallback(const endonasal_teleop::kinout kinmsg)
-{
-	tmpkin = kinmsg;
-
-	// pull out position
-	ptipcur[0] = tmpkin.p[0];
-	ptipcur[1] = tmpkin.p[1];
-	ptipcur[2] = tmpkin.p[2];
-
-	// pull out orientation (quaternion)
-	qtipcur[0] = tmpkin.q[0];
-	qtipcur[1] = tmpkin.q[1];
-	qtipcur[2] = tmpkin.q[2];
-	qtipcur[3] = tmpkin.q[3];
-
-	// pull out the base angles of the tubes (alpha in rad)	
-	alphacur[0] = tmpkin.alpha[0];
-	alphacur[1] = tmpkin.alpha[1];
-	alphacur[2] = tmpkin.alpha[2];
-
-	// pull out Jacobian
-	for (int i = 0; i<6; i++)
-	{
-		Jcur(0, i) = tmpkin.J1[i];
-		Jcur(1, i) = tmpkin.J2[i];
-		Jcur(2, i) = tmpkin.J3[i];
-		Jcur(3, i) = tmpkin.J4[i];
-		Jcur(4, i) = tmpkin.J5[i];
-		Jcur(5, i) = tmpkin.J6[i];
-	}
-}
-
-std_msgs::Bool tmpFKM;
-void kinStatusCallback(const std_msgs::Bool &fkmMsg)
-{
-	tmpFKM = fkmMsg;
-	if (tmpFKM.data == true)
-	{
-		new_kin_msg = 1;
-	}
-}*/
-
+// Visuzalization
 endonasal_teleop::matrix8 markersMsg;
 
+// Omni
 Eigen::Matrix4d omniPose;
 Eigen::Matrix4d prevOmni;
 Eigen::Matrix4d curOmni;
@@ -196,7 +89,6 @@ geometry_msgs::Pose tempMsg;
 void omniCallback(const geometry_msgs::Pose &msg)
 {
 	tempMsg = msg;
-	//    prevOmni = curOmni;
 
 	Eigen::Vector4d qOmni;
 	qOmni << tempMsg.orientation.w, tempMsg.orientation.x, tempMsg.orientation.y, tempMsg.orientation.z;
@@ -210,7 +102,6 @@ void omniCallback(const geometry_msgs::Pose &msg)
 	omniPose.topRightCorner(3, 1) = pOmni;
 	omniPose(3, 3) = 1.0;
 
-	//    curOmni = omniPose;
 }
 
 int buttonState = 0;
@@ -226,106 +117,14 @@ void omniButtonCallback(const std_msgs::Int8 &buttonMsg)
 	}
 }
 
-
 int main(int argc, char *argv[])
 {
-	/*******************************************************************************
-	INITIALIZE ROS NODE
-	********************************************************************************/
+
         ros::init(argc, argv, "endonasal_teleop");
 	ros::NodeHandle node;
-	/*******************************************************************************
-	DECLARATIONS & CONSTANT DEFINITIONS
-	********************************************************************************/
-	// TELEOP PARAMETERS
-//	double scale_factor = 0.10;
-//	double lambda_tracking = 10.0; 	// originally 1.0			// TODO: tune these gains
-//	double lambda_damping = 50.0;    // originally 5.0
-//	double lambda_jointlim = 100.0;  // originally 10.0
 
-//									 // motion tracking weighting matrix (task space):
-//	Matrix6d W_tracking = Eigen::Matrix<double, 6, 6>::Zero();
-//	W_tracking(0, 0) = lambda_tracking*1.0e6;
-//	W_tracking(1, 1) = lambda_tracking*1.0e6;
-//	W_tracking(2, 2) = lambda_tracking*1.0e6;
-//	W_tracking(3, 3) = 0.1*lambda_tracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-//	W_tracking(4, 4) = 0.1*lambda_tracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-//	W_tracking(5, 5) = lambda_tracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-
-//	std::cout << "W_tracking = " << std::endl << W_tracking << std::endl << std::endl;
-
-//	// damping weighting matrix (actuator space):
-//	Matrix6d W_damping = Eigen::Matrix<double, 6, 6>::Zero();
-//	double thetadeg = 2.0; // degrees to damp as much as 1 mm
-//	W_damping(0, 0) = lambda_damping*(180.0 / thetadeg / M_PI)*(180.0 / thetadeg / M_PI);
-//	W_damping(1, 1) = lambda_damping*(180.0 / thetadeg / M_PI)*(180.0 / thetadeg / M_PI);
-//	W_damping(2, 2) = lambda_damping*(180.0 / thetadeg / M_PI)*(180.0 / thetadeg / M_PI);
-//	W_damping(3, 3) = lambda_damping*1.0e6;
-//	W_damping(4, 4) = lambda_damping*1.0e6;
-//	W_damping(5, 5) = lambda_damping*1.0e6;
-
-//	std::cout << "W_damping = " << std::endl << W_damping << std::endl << std::endl;
-
-	// conversion from beta to x:
-//	Eigen::Matrix3d dbeta_dx;
-//	dbeta_dx << 1, 1, 1,
-//		0, 1, 1,
-//		0, 0, 1;
-
-//	Eigen::Matrix<double, 6, 6> dqbeta_dqx;
-//	dqbeta_dqx.fill(0);
-//	dqbeta_dqx.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
-//	dqbeta_dqx.block(3, 3, 3, 3) = dbeta_dx;
-
-//	// ROBOT POSE VARIABLES
-//	Eigen::Vector3d ptip;
-//	Eigen::Vector4d qtip;
-//	Eigen::Matrix3d Rtip;
-//	Eigen::Vector3d alpha;
-//	Vector6d q_vec;
-//	Vector6d delta_qx;
-//	Matrix4d omniFrameAtClutch;
-//	Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
-//	Matrix4d robotTipFrame; //from tip pose
-//	Matrix6d J;
-//	Matrix4d robotDesFrameDelta;
-//	Vector6d robotDesTwist;
-//	Eigen::Vector3d L;
-
-//	// OMNI POSE VARIABLES
-//	Matrix4d Tregs;
-//	Matrix4d omniDelta_omniCoords;
-//	Matrix4d prevOmniInv;
-//	Matrix4d omniDelta_cannulaCoords; //change in Omni position between timesteps in inertial frame
-
-//									  // OMNI REGISTRATION (constant)
-//	Matrix4d OmniReg = Matrix4d::Identity();
-//	Eigen::MatrixXd rotationY = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitY()).toRotationMatrix();
-//	Mtransform::SetRotation(OmniReg, rotationY);
-
-//	Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
-
-//	// MESSAGES TO BE SENT
-//	endonasal_teleop::config3 q_msg;
-//	std_msgs::Bool rrUpdateStatusMsg;
-
-//	// MISC.
-//	Eigen::Vector3d zerovec;
-//	zerovec.fill(0);
-//	double theta;
-//	double acosArg;
-//	double trace;
-//	Eigen::Matrix3d logR;
-//	double logRmag;
-//	Vector6d delta_q;
-//	Eigen::Matrix<double, 6, 6> A;
-//	Eigen::Matrix<double, 6, 6> Jstar;
-
-        ///
-        ///
-        /// CTR3ROBOT 1 DEFINITION
-        ///
-        ///
+        // -------------------------------------------------------------------------------
+        // CTR3ROBOT 1 DEFINITION
 
         medlab::CTR3RobotParams robot1Params;
         robot1Params.E = 60E9;
@@ -366,146 +165,40 @@ int main(int argc, char *argv[])
         ResolvedRatesController rr1(cannula);
         rr1.init();
 
+        //
+        // -------------------------------------------------------------------------------
+
+
 //        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
 //        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
 //        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
 //        std::cout << "Jtip" << robot1.currKinematics.Jtip << std::endl << std::endl;
 
-	/*******************************************************************************
-	SET UP PUBLISHERS, SUBSCRIBERS, SERVICES & CLIENTS
-	********************************************************************************/
-
-	// subscribers
-	ros::Subscriber omniButtonSub = node.subscribe("Buttonstates", 1, omniButtonCallback);
-	ros::Subscriber omniPoseSub = node.subscribe("Omnipos", 1, omniCallback);
-        //ros::Subscriber kinSub = node.subscribe("kinematics_output", 1, kinCallback);
-        //ros::Subscriber kinematics_status_pub = node.subscribe("kinematics_status", 1, kinStatusCallback);
-
-	// publishers
-        //ros::Publisher rr_status_pub = node.advertise<std_msgs::Bool>("rr_status", 1000);
-        //ros::Publisher jointValPub = node.advertise<endonasal_teleop::config3>("joint_q", 1000);
-        //ros::Publisher omniForcePub = node.advertise<geometry_msgs::Vector3>("Omniforce", 1000);
-        ros::Publisher needle_pub = node.advertise<endonasal_teleop::matrix8>("needle_position",10);
-	ros::Publisher pubEncoderCommand1 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB1/encoder_command", 1); // EC13
-	ros::Publisher pubEncoderCommand2 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB4/encoder_command", 1); // EC16
-
-																															//clients
-        //ros::ServiceClient startingKinClient = node.serviceClient<endonasal_teleop::getStartingKin>("get_starting_kin");
-
-	// rate
-	ros::Rate r(rosLoopRate);
-
-        /*******************************************************************************
-        Initialize Motor Boards
-        ********************************************************************************/
 //        McbRos* motorBoard1;
 //        std::string motorBoard1NodeName = ui_.lineEdit_nodeName->text().toStdString();
 //        motorBoard1->init(motorBoard1NodeName);
-
-	/*******************************************************************************
-	LOAD PARAMETERS FROM XML FILES
-	********************************************************************************/
-
-//	if (ros::param::has("/CannulaExample1/EndEffectorType"))
-//	{
-//		std::cout << "I found that parameter you wanted. let's try to do something useful with it" << std::endl;
-//	}
-
-//	std::string EEtype;
-//	ros::param::get("/CannulaExample1/EndEffectorType", EEtype);
-
-//	std::cout << "EEtype is now: " << EEtype << std::endl;
-
-	//    // based on an example located at: https://gist.github.com/JSchaenzle/2726944
-
-	//    std::cout<<"Parsing xml file..."<<std::endl;
-	//    xml_document<> doc;
-	//    std::ifstream cannulaFile ("/home/remireaa/catkin_ws/src/endonasal_teleop/config/cannula_example1.xml"); // input file stream (in std library)
-
-	//    // Read xml file into a vector
-	//    std::vector<char> buffer( (std::istreambuf_iterator<char>(cannulaFile)), std::istreambuf_iterator<char>() );
-	//    if (buffer.size() > 0)
-	//    {
-	//        std::cout << "Successfully loaded xml file." << std::endl;
-	//    }
-	//    buffer.push_back('\0');
-
-	//    // Parse buffer into doc using the xml file parsing library
-	//    doc.parse<0>(&buffer[0]);
-
-	//    // Process information in cannula xml file
-	//    xml_node<> *cannula_node = doc.first_node("Cannula");
-	//    std::cout << "This is an active cannula robot with " << cannula_node->first_attribute("NumberOfTubes")->value() << " tubes." << std::endl;
-
-	//    // Iterate over tubes within cannula node:
-	//    std::cout << "right before loop..." << std::endl;
-	//    for(xml_node<> *tube_node = cannula_node->first_node("Tube"); tube_node; tube_node = tube_node->next_sibling())
-	//    {
-	//        std::cout << "here i am" << std::endl;
-	//    }
-
-	/*******************************************************************************
-	COMPUTE KINEMATICS FOR STARTING CONFIGURATION
-	********************************************************************************/
-
-//	Configuration3 qstart;
-//	qstart.PsiL = Eigen::Vector3d::Zero();
-//	qstart.Beta << -160.9e-3, -127.2e-3, -86.4e-3;		// TODO: need to set these and get corresponding counts for initialization
-//	qstart.Ftip = Eigen::Vector3d::Zero();
-//	qstart.Ttip = Eigen::Vector3d::Zero();
-
-//	q_vec << qstart.PsiL(0), qstart.PsiL(1), qstart.PsiL(2), qstart.Beta(0), qstart.Beta(1), qstart.Beta(2);
-
-//	L << 222.5e-3, 163e-3, 104.4e-3;
-
-//	// Call getStartingKin service:
-//	endonasal_teleop::getStartingKin get_starting_kin;
-//	get_starting_kin.request.kinrequest = true;
-//	ros::service::waitForService("get_starting_kin", -1);
-//	zero_force();
-
-//	if (startingKinClient.call(get_starting_kin))
-//	{
-//		for (int i = 0; i<3; i++)
-//		{
-//			ptipcur(i) = get_starting_kin.response.p[i];
-//		}
-
-//		for (int i = 0; i<4; i++)
-//		{
-//			qtipcur(i) = get_starting_kin.response.q[i];
-//		}
-
-//		for (int i = 0; i<6; i++)
-//		{
-//			Jcur(0, i) = get_starting_kin.response.J1[i];
-//			Jcur(1, i) = get_starting_kin.response.J2[i];
-//			Jcur(2, i) = get_starting_kin.response.J3[i];
-//			Jcur(3, i) = get_starting_kin.response.J4[i];
-//			Jcur(4, i) = get_starting_kin.response.J5[i];
-//			Jcur(5, i) = get_starting_kin.response.J6[i];
-//		}
-
-//		new_kin_msg = 1;
-
-//		std::cout << "Starting pose and Jacobian received." << std::endl << std::endl;
-//	}
-//	else
-//	{
-//		std::cout << "Failed to fetch starting pose and Jacobian." << std::endl << std::endl;
-//		return 1;
-//	}
-
-//	// Check that the kinematics got called once
-//	std::cout << "ptip at start = " << std::endl << ptipcur << std::endl << std::endl;
-//	std::cout << "qtip at start = " << std::endl << qtipcur << std::endl << std::endl;
-//	std::cout << "J at start = " << std::endl << Jcur << std::endl << std::endl;
 
 //	Eigen::Vector3d dhPrev;
 //	dhPrev.fill(0);
 
 //	prevOmni = omniPose;
 
+        // -------------------------------------------------------------------------------
+        // SUBSCRIBERS
+        ros::Subscriber omniButtonSub = node.subscribe("Buttonstates", 1, omniButtonCallback);
+        ros::Subscriber omniPoseSub = node.subscribe("Omnipos", 1, omniCallback);
+
+        // PUBLISHERS
+        ros::Publisher needle_pub = node.advertise<endonasal_teleop::matrix8>("needle_position",10);
+        ros::Publisher pubEncoderCommand1 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB1/encoder_command", 1); // EC13
+        ros::Publisher pubEncoderCommand2 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB4/encoder_command", 1); // EC16
+                                                                                                                                                                                                                                                //clients
+        // ROS RATE
+        ros::Rate r(rosLoopRate);
+
+        // -------------------------------------------------------------------------------
+        // LOOP!
+        // -------------------------------------------------------------------------------
 	while (ros::ok())
 	{
 
