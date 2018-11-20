@@ -305,7 +305,7 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
 medlab::WeightingRet CTR3Robot::computeStabilityWeightingMatrix(RoboticsMath::Vector6d qVec, double S, double sThreshold, double alphaS)
 {
   RoboticsMath::Matrix6d W = (exp(1 / (S - sThreshold)) - 1) * RoboticsMath::Matrix6d::Identity();
-  RoboticsMath::Vector6d vS = RoboticsMath::Vector6d::Zero();
+  RoboticsMath::Vector6d vS1 = RoboticsMath::Vector6d::Zero();
   RoboticsMath::Vector6d dSdq = RoboticsMath::Vector6d::Zero();
 
   double rotationalStep = 0.05*M_PI / 180.0;
@@ -356,10 +356,10 @@ medlab::WeightingRet CTR3Robot::computeStabilityWeightingMatrix(RoboticsMath::Ve
 
   }
 
-  vS = alphaS*dSdq;
+  vS1 = alphaS*dSdq;
 
-  WStability_ = W;
-  vS_ = vS;
+  WStability = W;
+  vS = vS1;
 
   medlab::WeightingRet output;
   output.W = W;

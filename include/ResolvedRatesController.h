@@ -35,7 +35,7 @@ private:
   std::vector<ResolvedRatesController::LIMIT_FLAG> currentLimitFlags_;
   RoboticsMath::Matrix6d JCur_;
   double lambdaTracking_;
-  RoboticsMath::Matrix6d WTracking_;
+  Eigen::Matrix4d WTracking_;
   double lambdaDamping_;
   RoboticsMath::Matrix6d WDamping_;
   double lambdaJL_;

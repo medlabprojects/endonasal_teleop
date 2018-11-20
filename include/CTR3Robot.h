@@ -38,12 +38,11 @@ public:
 
   medlab::KinOut callKinematicsWithDenseOutput(medlab::CTR3KinematicsInputVector newKinematicsInput);
   Eigen::MatrixXd forwardKinematics(auto kin);
-
   medlab::InterpRet interpolateBackbone(Eigen::VectorXd sRef, Eigen::MatrixXd poseDataRef, int nPts);
-
   medlab::WeightingRet computeStabilityWeightingMatrix(RoboticsMath::Vector6d qVec, double S, double sThreshold, double alphaS);
-
   medlab::KinOut currKinematics;  // kinout from kinematics call, transformed into base frame & interpolated
+  RoboticsMath::Matrix6d WStability;
+  Eigen::VectorXd vS;
 
 private:
   medlab::Cannula3 cannula_;  // cannula tuple object fed to Hunter's kinematics
@@ -55,6 +54,5 @@ private:
   int nPts_; // number of points along arclength returned by kinematics
   int nInterp_; // number of points to interpolate on backbone
   Eigen::Matrix<double, 8, Eigen::Dynamic> markersOut_; // Matrix for storing marker output to rviz (used in endonasal_teleop)
-  RoboticsMath::Matrix6d WStability_;
-  Eigen::VectorXd vS_;
+
 };

@@ -301,6 +301,11 @@ int main(int argc, char *argv[])
 
       RoboticsMath::Vector6d desTwist;
       desTwist = InputDeviceTwist(omniDeltaOmniPenCoords);
+      RoboticsMath::Vector6d newQ;
+      newQ = rr1.step(desTwist);
+      prevOmni = curOmni;
+
+      // TODO: send out joint commands
 
     }
 

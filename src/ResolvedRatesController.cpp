@@ -49,6 +49,7 @@ void ResolvedRatesController::init()
   eMax_ = 1E-3;
   eMin_ = 1E-6;
   convergeRadius_ = 1E-8;
+
 }
 
 RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
@@ -57,6 +58,8 @@ RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desT
 
   medlab::KinOut kin = robot_.currKinematics;
 
+  RoboticsMath::Matrix6d Jbody = kin.Jtip;
+
   Eigen::Vector3d posError = desTwist.topRows<3>();
   if (posError.norm() > convergeRadius_)
   {
@@ -64,8 +67,73 @@ RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desT
     posError = vMag*posError / posError.norm();
   }
 
+  Eigen::Vector4d xDotDes;
+  xDotDes.topRows<3>() = posError;
+  xDotDes.bottomRows<1>() = desTwist.bottomRows<1>();
+
+  // JBody -> JHybrid
+  RoboticsMath::Matrix6d RR = RoboticsMath::Matrix6d::Zero();
+  Eigen::Matrix3d RBishop = RoboticsMath::quat2rotm(kin.Qbishop);
+
+  RR.topLeftCorner<3,3>() = RBishop;
+  RR.bottomRightCorner<3,3>() = RBishop;
+  RoboticsMath::Matrix6d Jh = RR*Jbody;
+
+  RoboticsMath::Matrix6d Jmix;
+  Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);
+  Jmix.block(3,0,3,6) = Jbody.block(3,0,3,6);
+
+  Eigen::Matrix3d dBetadx;
+  dBetadx << 1,1,1,
+             0,1,1,
+             0,0,1;
+
+  RoboticsMath::Matrix6d dqBetadqX;
+  dqBetadqX.fill(0);
+  dqBetadqX.block(0,0,3,3) = Eigen::MatrixXd::Identity(3,3);
+  dqBetadqX.block(3,3,3,3) = dBetadx;
+
+  RoboticsMath::Matrix6d Jx = Jmix*dqBetadqX;
+  Eigen::Matrix<double,4,6> Jp;
+  Jp.topRows<3>() = Jx.topRows<3>();
+  Jp.bottomRows<1>() = Jx.bottomRows<1>();
+
+  medlab::CTR3RobotParams params = robot_.GetCurRobotParams();
+  Eigen::Vector3d L;
+  L << params.L1, params.L2, params.L3;
+  RoboticsMath::Vector6d qVec = robot_.GetCurrQVec();
+  RoboticsMath::Vector6d qXVec = transformBetaToX(qVec,L);
+  Eigen::Vector3d qX = qXVec.bottomRows<3>();
+  medlab::WeightingRet WJOut = computeJLWeightingMatrix(qX,dhPrev_,L);
+  WJointLims_ = WJOut.W;
+  dhPrev_ = WJOut.dh;
+
+  RoboticsMath::Matrix6d A;
+  RoboticsMath::Vector6d b;
+  if (instabilityAvoidance_)
+  {
+    double alphaS = 10.0;
+    double stabilityThreshold = 0.0;
+
+    robot_.computeStabilityWeightingMatrix(qVec,kin.Stability,stabilityThreshold,alphaS);
+    RoboticsMath::Matrix6d WS = robot_.WStability;
+    RoboticsMath::Vector6d vS = robot_.vS;
+
+    A = Jp.transpose()*WTracking_*Jp + WDamping_ + WJointLims_ + WS;
+    b = Jp.transpose()*WTracking_*xDotDes;
+  }
+  else
+  {
+    A = Jp.transpose()*WTracking_*Jp + WDamping_ + WJointLims_;
+    b = Jp.transpose()*WTracking_*xDotDes;
+  }
+
+  RoboticsMath::Vector6d desQDot;
+  desQDot = A.partialPivLu().solve(b);
+
   //  desQ = [desPsi1 desPsi2 desPsi3 desBeta1 desBeta2 desBeta3]
   RoboticsMath::Vector6d desQ;
+  desQ = qVec + desQDot;
 
   return desQ;
 }
@@ -75,11 +143,7 @@ bool ResolvedRatesController::SetTrackingGain(double LambdaTracking)
   WTracking_(0, 0) = LambdaTracking;
   WTracking_(1, 1) = LambdaTracking;
   WTracking_(2, 2) = LambdaTracking;
-  WTracking_(3,3) = 0.0;
-  WTracking_(4,4) = 0.0;
-//  WTracking_(3, 3) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-//  WTracking_(4, 4) = 0.1*LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0);
-  WTracking_(5, 5) = LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0)*1E1; // Increase to track roll
+  WTracking_(3, 3) = LambdaTracking*(180.0 / M_PI / 2.0)*(180.0 / M_PI / 2.0)*1E1; // Increase to track roll
   return true;
 }
 
@@ -387,12 +451,3 @@ double ResolvedRatesController::computeVMag(Eigen::Vector3d e)
   }
   return vMag;
 }
-
-
-
-
-
-
-
-
-
