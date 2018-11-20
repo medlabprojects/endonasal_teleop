@@ -199,6 +199,7 @@ int main(int argc, char *argv[])
   //    --> at the end, segue to IDLE
   // --> IDLE State
   //    --> listen for event triggers to SIM or ACTIVE
+  //    --> user can change RR gains
   // --> ACTIVE State
   //    --> enable motors and listen to input devices
   //    --> listen for trigger back to IDLE
