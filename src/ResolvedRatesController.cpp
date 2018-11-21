@@ -17,13 +17,10 @@ ResolvedRatesController::~ResolvedRatesController()
 
 void ResolvedRatesController::init()
 {
-  // Construct w/ CTR3Robot with params and base frame
-
-  // Set Input Device
-  // Resolved Rates Prep --> extract ptip, qtip, Jtip, calc WJointLims
+  // TODO:Construct w/ CTR3Robot with params and base frame
 
   RoboticsMath::Vector6d qHome;
-  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3;
+  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; // TODO: update this for actual home position
   robot_.init(qHome);
 
   // Compute initial Weighting matrices
@@ -52,7 +49,7 @@ void ResolvedRatesController::init()
 
 }
 
-RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)  // TODO:  input is commanded twist  --- output would be joint values (alpha, beta)
+RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desTwist)
 {
   currentLimitFlags_.clear();
 

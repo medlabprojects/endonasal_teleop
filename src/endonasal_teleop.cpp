@@ -12,6 +12,9 @@
 // -> for all references to math/robotics math functions, use namespace RobotMath::deg2rad() for ex. and just #include "RobotMath.h"
 // -> still need to implement haptic damper on omninode side..needs faster update rate to feel good
 
+// Finite State Machine
+#include "endonasalTeleopFSM.h"
+
 // Qt headers
 #include <QCoreApplication>
 #include <QVector>
@@ -36,6 +39,9 @@
 
 //XML parsing headers
 #include "rapidxml.hpp"
+
+// Phantom Omni
+#include "PhantomOmniRos.h"
 
 // Message & service headers
 #include <tf_conversions/tf_eigen.h>
@@ -82,17 +88,6 @@ int motorControlState = 0;
 endonasal_teleop::matrix8 markersMsg;
 
 double rosLoopRate = 100.0;
-
-// Omni
-Eigen::Matrix4d omniPose;
-Eigen::Matrix4d prevOmni;
-Eigen::Matrix4d curOmni;
-Eigen::Matrix4d Tregs;
-Eigen::Matrix4d OmniDeltaOmniCoords;
-Eigen::Matrix4d prevOmniInv;
-Eigen::Matrix4d omniDeltaCannulaCoords;
-Eigen::Matrix4d omniFrameAtClutch;
-double omniScaleFactor = 0.30;
 
 Eigen::Matrix4d robotTipFrame;
 Eigen::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
@@ -199,6 +194,7 @@ int main(int argc, char *argv[])
   //    --> at the end, segue to IDLE
   // --> IDLE State
   //    --> listen for event triggers to SIM or ACTIVE
+  //    --> user can change RR gains
   // --> ACTIVE State
   //    --> enable motors and listen to input devices
   //    --> listen for trigger back to IDLE

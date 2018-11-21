@@ -45,7 +45,7 @@ struct CTR3RobotParams {
   double ID3;
 };
 
-struct CTR3KinematicsInputVector { // format of the state vector fed into Kinematics_with_dense_output()
+struct CTR3KinematicsInputVector { // format of the input vector fed into Kinematics_with_dense_output()
   Eigen::Vector3d PsiL;
   Eigen::Vector3d Beta;
   Eigen::Vector3d Ftip;
@@ -58,12 +58,12 @@ struct InterpRet {      // Interpolated CTR3 Backbone
   Eigen::MatrixXd q;
 };
 
-struct WeightingRet { // Joint Limits Weighting Matrix (Configuration Dependent)
+struct WeightingRet {
   RoboticsMath::Matrix6d W;
   Eigen::VectorXd dh;
 };
 
-struct KinOut {  // used by ResolvedRates.init() -> Online Resolved Rates Loop
+struct KinOut {
   Eigen::Vector3d Ptip;
   Eigen::Vector4d Qtip;
   Eigen::Vector4d Qbishop;
