@@ -14,25 +14,16 @@ class CTR3Robot
 {
 
 public:
-  CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params);
+  CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params,
+            RoboticsMath::Vector6d qHome, Eigen::Matrix4d baseFrame);
   bool init();
-  bool init(RoboticsMath::Vector6d qHome);
 
   medlab::Cannula3 GetCannula();
-
   medlab::CTR3RobotParams GetCurRobotParams();
-
-  // [PsiL, Beta, Ftip, Ttip]
-  bool SetCurrKinematicsInputVector(medlab::CTR3KinematicsInputVector kinematicsInputVector);
   medlab::CTR3KinematicsInputVector GetCurrKinematicsInputVector();
-
-  // [psiL, beta] only
-  bool SetCurrQVec(RoboticsMath::Vector6d qVec);
   RoboticsMath::Vector6d GetCurrQVec();
-
-  bool SetInterpolatedBackbone(medlab::InterpRet interpolatedBackbone);
+  RoboticsMath::Vector6d GetQHome();
   medlab::InterpRet GetInterpolatedBackbone();
-
   int GetNPts();
   int GetNInterp();
 
@@ -43,6 +34,7 @@ public:
   medlab::KinOut currKinematics;  // kinout from kinematics call, transformed into base frame & interpolated
   RoboticsMath::Matrix6d WStability;
   Eigen::VectorXd vS;
+  Eigen::Matrix4d BaseFrame_WORLD;
 
 private:
   medlab::Cannula3 cannula_;  // cannula tuple object fed to Hunter's kinematics

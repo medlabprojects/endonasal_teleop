@@ -186,6 +186,47 @@ RoboticsMath::Vector6d InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
     return desTwist;
 }
 
+endonasal_teleop::matrix8 VisualizeRobot(CTR3Robot robot)
+{
+  //// Publish visualizations to rviz
+
+  medlab::InterpRet robotBackbone = robot.GetInterpolatedBackbone();
+
+  int nPts = robot.GetNPts();
+  int nInterp = robot.GetNInterp();
+
+  for (int j=0; j<(nInterp+nPts); j++)
+  {
+    markersMsg.A1[j]=robotBackbone.p(0,j); // X,Y,Z
+    markersMsg.A2[j]=robotBackbone.p(1,j);
+    markersMsg.A3[j]=robotBackbone.p(2,j);
+    markersMsg.A4[j]=robotBackbone.q(0,j); // w,x,y,z
+    markersMsg.A5[j]=robotBackbone.q(1,j);
+    markersMsg.A6[j]=robotBackbone.q(2,j);
+    markersMsg.A7[j]=robotBackbone.q(3,j);
+
+    medlab::CTR3RobotParams robotParams = robot.GetCurRobotParams();
+    RoboticsMath::Vector6d robotCurQVec = robot.GetCurrQVec();
+    Eigen::Vector3d robotCurBeta = robotCurQVec.bottomRows(3);
+    if (robotCurBeta[1] > robotBackbone.s[j] ||
+        robotParams.L2+robotCurBeta[1] < robotBackbone.s[j])
+    {
+      markersMsg.A8[j] = 1; // green
+    }
+    else if ((robotCurBeta[1] <= robotBackbone.s[j] && robotCurBeta[2] > robotBackbone.s[j]) ||
+             (robotParams.L3 + robotCurBeta[2] < robotBackbone.s[j] && robotParams.L2 + robotCurBeta[1] >= robotBackbone.s[j]))
+    {
+      markersMsg.A8[j] = 2; // red
+    }
+    else
+    {
+      markersMsg.A8[j] = 3; // blue
+    }
+  }
+
+  return markersMsg;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -209,12 +250,9 @@ int main(int argc, char *argv[])
 
 
 
+
   // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  //                                 TODO: initAllRobots() -- > happens in INIT state
-  // --> we set all of this stuff in there...
+  // --------------------------------------------------------------------------------------- TODO: <initAllRobots()>
 
   // Omni Registration Vars
   Eigen::Matrix4d OmniReg = Eigen::Matrix4d::Identity();
@@ -228,9 +266,9 @@ int main(int argc, char *argv[])
   ros::init(argc, argv, "endonasal_teleop");
   ros::NodeHandle node;
 
-  // -------------------------------------------------------------------------------
-  // <CTR3ROBOT 1 DEFINITION/>
-  // TODO: move into seperate functions => getParametersFromServer() & createCannula(robotNumber)
+  // TODO: get below from parameter server
+
+  // <CTR3ROBOT 1 DEFINITION/> --------------------------------
   medlab::CTR3RobotParams robot1Params;
   robot1Params.E = 60E9;
   robot1Params.G = 60E9 / 2.0 / 1.33;
@@ -265,15 +303,36 @@ int main(int argc, char *argv[])
   // Assemble cannula
   auto cannula = std::make_tuple( T1, T2, T3 );
 
-  // -------------------------------------------------------------------------------
-  // </CTR3ROBOT 1 DEFINITION>
+  RoboticsMath::Vector6d robot1Home;
+  robot1Home << 3.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3;
+
+  Eigen::Matrix4d robot1BaseFrame = Eigen::Matrix4d::Identity();
+  robot1BaseFrame(0,3) = 10.0E-3;
+  // </CTR3ROBOT 1 DEFINITION> ---------------------------------
+
+
+  // <CTR3ROBOT 2 DEFINITION> ----------------------------------
+  Eigen::Matrix4d robot2BaseFrame = Eigen::Matrix4d::Identity();
+  robot2BaseFrame(0,3) = -10.0E-3;
+  // </CTR3ROBOT 2 DEFINITION> ---------------------------------
+
+
+  // <CTR3ROBOT 3 DEFINITION> ----------------------------------
+  Eigen::Matrix4d robot3BaseFrame = Eigen::Matrix4d::Identity();
+  robot3BaseFrame(0,2) = -10.0E-3;
+  // </CTR3ROBOT 3 DEFINITION> ---------------------------------
 
 
   // Initialize robot with controller
   // robot1Params = getParametersFromServer(1);
-  // ResolvedRatesController rr1(createCannula(robot1Params),robot1Params);
-  ResolvedRatesController rr1(cannula,robot1Params);
+  ResolvedRatesController rr1(cannula,robot1Params,robot1Home,robot1BaseFrame);
   rr1.init();
+
+  ResolvedRatesController rr2(cannula,robot1Params,robot1Home,robot2BaseFrame);
+  rr2.init();
+
+  ResolvedRatesController rr3(cannula,robot1Params,robot1Home,robot3BaseFrame);
+  rr3.init();
 
   // -------------------------------------------------------------------------------
   //        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
@@ -285,7 +344,12 @@ int main(int argc, char *argv[])
   //        std::string motorBoard1NodeName = ui_.lineEdit_nodeName->text().toStdString();
   //        motorBoard1->init(motorBoard1NodeName);
 
-  // -------------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------
+  // --------------------------------------------------------------------------------------- </initAllRobots>
+
+
+
   // SUBSCRIBERS
   ros::Subscriber omniButtonSub = node.subscribe("Buttonstates", 1, omniButtonCallback);
   ros::Subscriber omniPoseSub = node.subscribe("Omnipos", 1, omniCallback);
@@ -299,8 +363,6 @@ int main(int argc, char *argv[])
   ros::Rate r(rosLoopRate);
 
 
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
   // ---------------------------------------------------------------------------------------
   // ---------------------------------------------------------------------------------------
 
@@ -352,43 +414,10 @@ int main(int argc, char *argv[])
 
     }
 
-    //// Publish visualizations to rviz
-
-    CTR3Robot robot1 = rr1.GetRobot();
-    medlab::InterpRet robot1Backbone = robot1.GetInterpolatedBackbone();
-
-    int nPts = robot1.GetNPts();
-    int nInterp = robot1.GetNInterp();
-
-    for (int j=0; j<(nInterp+nPts); j++)
-    {
-      markersMsg.A1[j]=robot1Backbone.p(0,j); // X
-      markersMsg.A2[j]=robot1Backbone.p(1,j); // Y
-      markersMsg.A3[j]=robot1Backbone.p(2,j); // Z
-      markersMsg.A4[j]=robot1Backbone.q(0,j); // w
-      markersMsg.A5[j]=robot1Backbone.q(1,j); // x
-      markersMsg.A6[j]=robot1Backbone.q(2,j); // y
-      markersMsg.A7[j]=robot1Backbone.q(3,j); // z
-
-      RoboticsMath::Vector6d robot1CurQVec = robot1.GetCurrQVec();
-      Eigen::Vector3d robot1CurBeta = robot1CurQVec.bottomRows(3);
-      if (robot1CurBeta[1] > robot1Backbone.s[j] ||
-          robot1Params.L2+robot1CurBeta[1] < robot1Backbone.s[j])
-      {
-        markersMsg.A8[j] = 1; // green
-      }
-      else if ((robot1CurBeta[1] <= robot1Backbone.s[j] && robot1CurBeta[2] > robot1Backbone.s[j]) ||
-               (robot1Params.L3 + robot1CurBeta[2] < robot1Backbone.s[j] && robot1Params.L2 + robot1CurBeta[1] >= robot1Backbone.s[j]))
-      {
-        markersMsg.A8[j] = 2; // red
-      }
-      else
-      {
-        markersMsg.A8[j] = 3; // blue
-      }
-    }
-
-    needle_pub.publish(markersMsg);
+    // TODO: this is slow, need to implement only update if new kinematics
+    needle_pub.publish(VisualizeRobot(rr1.GetRobot()));
+    needle_pub.publish(VisualizeRobot(rr2.GetRobot()));
+    needle_pub.publish(VisualizeRobot(rr3.GetRobot()));
 
     // sleep
     ros::spinOnce();

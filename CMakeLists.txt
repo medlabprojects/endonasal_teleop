@@ -63,6 +63,7 @@ add_message_files(
 	config3.msg
 	vector7.msg
 	kinout.msg
+	OmniState.msg
 #	cannula3def.msg
 )
 

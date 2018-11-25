@@ -1,10 +1,9 @@
 #include "ResolvedRatesController.h"
 
-ResolvedRatesController::ResolvedRatesController(medlab::Cannula3 cannula, medlab::CTR3RobotParams params):
-  robot_(cannula,params)
+ResolvedRatesController::ResolvedRatesController(medlab::Cannula3 cannula, medlab::CTR3RobotParams params,
+                                                 RoboticsMath::Vector6d qHome, Eigen::Matrix4d baseFrame):
+  robot_(cannula,params,qHome,baseFrame)
 {
-  // we might want to specify what control scheme to use, which weighting matrices
-  // --> might also make sense to overload/have a default for the control scheme
   lambdaTracking_ = 1.0E8;
   lambdaDamping_ = 0.5;
   lambdaJL_ = 1.0E3;
@@ -21,10 +20,8 @@ void ResolvedRatesController::init()
 
   // Set Input Device
   // Resolved Rates Prep --> extract ptip, qtip, Jtip, calc WJointLims
-
-  RoboticsMath::Vector6d qHome;
-  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3;
-  robot_.init(qHome);
+  robot_.init();
+  RoboticsMath::Vector6d qHome = robot_.GetQHome();
 
   // Compute initial Weighting matrices
   SetTrackingGain(lambdaTracking_);
