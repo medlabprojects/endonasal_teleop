@@ -69,30 +69,12 @@ endonasal_teleop::matrix8 markersMsg;
 
 double rosLoopRate = 200.0;
 
-// Omni
-Eigen::Matrix4d omniPose; // TODO: do we need all of these as globals?
+// Omni Vars
+Eigen::Matrix4d omniPose;
 Eigen::Matrix4d prevOmni;
 Eigen::Matrix4d curOmni;
-//Eigen::Matrix4d Tregs;
-Eigen::Matrix4d OmniDeltaOmniCoords;
-Eigen::Matrix4d prevOmniInv;
-Eigen::Matrix4d omniDeltaCannulaCoords;
 double omniScaleFactor = 0.30;
 Eigen::Vector3d zeroVec = Eigen::Vector3d::Zero();
-
-Eigen::Matrix4d robotTipFrame;
-Eigen::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
-Eigen::Vector3d pTipCur;
-Eigen::Vector4d qTipCur;
-Eigen::Vector4d qBishopCur;
-Eigen::Vector3d alphaCur;
-
-Eigen::Vector3d pTip;
-Eigen::Vector4d qTip;
-Eigen::Vector4d qBishop;
-Eigen::Vector3d alpha;
-Eigen::Matrix3d Rtip;
-Eigen::Matrix3d RBishop;
 
 // TODO: omni message has been reformatted to stream Matrix4d & button msgs -> modify to read this in
 geometry_msgs::Pose tempMsg;
@@ -131,40 +113,43 @@ void omniButtonCallback(const std_msgs::Int8 &buttonMsg)
 // ::setInputDeviceTransform(Matrix4d transform)
 // Vector6d ResolvedRates::transformInputDeviceTwist(Eigen::Matrix4d inputDeviceCoords){return RoboticsMath::Vector6d::Zero()};
 //RoboticsMath::Vector6d ResolvedRates::InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
-RoboticsMath::Vector6d InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
+RoboticsMath::Vector6d InputDeviceTwistUpdate()
 {
-    omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
-    omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
-    Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
-    Eigen::Matrix4d omniDeltaOmniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDeltaOmniPenCoords*RPrevOmni.transpose());
+  // This uses the global curOmni and prevOmni vars to update desTwist
+  Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
 
-    Eigen::Matrix3d Rd = curOmni.block<3,3>(0,0);
-    Eigen::Matrix3d Rc = prevOmni.block<3,3>(0,0);
-    Eigen::Matrix3d Re = Rd*Rc.transpose();
-    Re = RoboticsMath::orthonormalize(Re);
+  omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
+  omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
+  Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
+  Eigen::Matrix4d omniDeltaOmniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDeltaOmniPenCoords*RPrevOmni.transpose());
 
-    // desTwist should use OmniBaseCoords for linar velocity, and OmniPenCoords for angular velocity
-    RoboticsMath::Vector6d omniTwistOmniPenCoords;
-    omniTwistOmniPenCoords(0) = omniDeltaOmniPenCoords(0,3); // vx
-    omniTwistOmniPenCoords(1) = omniDeltaOmniPenCoords(1,3); // vy
-    omniTwistOmniPenCoords(2) = omniDeltaOmniPenCoords(2,3); // vz
-    omniTwistOmniPenCoords(3) = omniDeltaOmniPenCoords(2,1); // wx
-    omniTwistOmniPenCoords(4) = omniDeltaOmniPenCoords(0,2); // wy
-    omniTwistOmniPenCoords(5) = omniDeltaOmniPenCoords(1,0); // wz
+  Eigen::Matrix3d Rd = curOmni.block<3,3>(0,0);
+  Eigen::Matrix3d Rc = prevOmni.block<3,3>(0,0);
+  Eigen::Matrix3d Re = Rd*Rc.transpose();
+  Re = RoboticsMath::orthonormalize(Re);
 
-    RoboticsMath::Vector6d omniTwistOmniBaseCoords;
-    omniTwistOmniBaseCoords(0) = omniDeltaOmniBaseCoords(0,3);
-    omniTwistOmniBaseCoords(1) = omniDeltaOmniBaseCoords(1,3);
-    omniTwistOmniBaseCoords(2) = omniDeltaOmniBaseCoords(2,3);
-    omniTwistOmniBaseCoords(3) = omniDeltaOmniBaseCoords(2,1);
-    omniTwistOmniBaseCoords(4) = omniDeltaOmniBaseCoords(0,2);
-    omniTwistOmniBaseCoords(5) = omniDeltaOmniBaseCoords(1,0);
+  // desTwist should use OmniBaseCoords for linar velocity, and OmniPenCoords for angular velocity
+  RoboticsMath::Vector6d omniTwistOmniPenCoords;
+  omniTwistOmniPenCoords(0) = omniDeltaOmniPenCoords(0,3); // vx
+  omniTwistOmniPenCoords(1) = omniDeltaOmniPenCoords(1,3); // vy
+  omniTwistOmniPenCoords(2) = omniDeltaOmniPenCoords(2,3); // vz
+  omniTwistOmniPenCoords(3) = omniDeltaOmniPenCoords(2,1); // wx
+  omniTwistOmniPenCoords(4) = omniDeltaOmniPenCoords(0,2); // wy
+  omniTwistOmniPenCoords(5) = omniDeltaOmniPenCoords(1,0); // wz
 
-    RoboticsMath::Vector6d desTwist;
-    desTwist.head(3) = omniTwistOmniBaseCoords.head(3);
-    desTwist.tail(3) = omniTwistOmniPenCoords.tail(3);
+  RoboticsMath::Vector6d omniTwistOmniBaseCoords;
+  omniTwistOmniBaseCoords(0) = omniDeltaOmniBaseCoords(0,3);
+  omniTwistOmniBaseCoords(1) = omniDeltaOmniBaseCoords(1,3);
+  omniTwistOmniBaseCoords(2) = omniDeltaOmniBaseCoords(2,3);
+  omniTwistOmniBaseCoords(3) = omniDeltaOmniBaseCoords(2,1);
+  omniTwistOmniBaseCoords(4) = omniDeltaOmniBaseCoords(0,2);
+  omniTwistOmniBaseCoords(5) = omniDeltaOmniBaseCoords(1,0);
 
-    return desTwist;
+  RoboticsMath::Vector6d desTwist;
+  desTwist.head(3) = omniTwistOmniBaseCoords.head(3);
+  desTwist.tail(3) = omniTwistOmniPenCoords.tail(3);
+
+  return desTwist;
 }
 
 endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
@@ -339,16 +324,9 @@ int main(int argc, char *argv[])
     // Init will pull from parameter server in here
 
 
+    // TODO: need to link an omni device to an instance of ResolvedRatesController (rr.SetInputDevice())
     // All of this will be in either SIM or ACTIVE states
     curOmni = omniPose; // Omni Update
-
-    pTip = pTipCur; // CTR3Robot Update
-    qTip = qTipCur;
-    qBishop = qBishopCur;
-    alpha = alphaCur;
-    Rtip = RoboticsMath::quat2rotm(qTip);
-    RBishop = RoboticsMath::quat2rotm(qBishop);
-    robotTipFrame = RoboticsMath::assembleTransformation(Rtip,pTip);
 
     if (buttonState == 1)   // while clutched in
     {
@@ -364,11 +342,8 @@ int main(int argc, char *argv[])
         justClutched = false;
       }
 
-      // This is computed from prevOmni & curOmni, then fed into InputDeviceTwist() to get desTwist
-      Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
-
       RoboticsMath::Vector6d desTwist;
-      desTwist = InputDeviceTwist(omniDeltaOmniPenCoords);
+      desTwist = InputDeviceTwistUpdate();
       RoboticsMath::Vector6d newQ;
       newQ = rr1.step(desTwist);
       prevOmni = curOmni;
@@ -380,6 +355,8 @@ int main(int argc, char *argv[])
     }
 
     // TODO: this is slow, need to implement only update if new kinematics
+    // TODO: we should have one large message with all markers for all robots?
+
     needle_pub.publish(GenerateRobotVisualizationMarkers(rr1.GetRobot()));
 //    needle_pub.publish(GenerateRobotVisualizationMarkers(rr2.GetRobot()));
 //    needle_pub.publish(GenerateRobotVisualizationMarkers(rr3.GetRobot()));
