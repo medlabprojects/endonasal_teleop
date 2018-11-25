@@ -61,12 +61,8 @@
 #include <vector>
 #include <cmath>
 
-// ---------------------------------------------------------------
-// DEF GLOBALS
-// ---------------------------------------------------------------
-
 // Motor Enable
-int motorControlState = 0;
+int motorControlState = 0; // TODO: handle this with the state machine (ACTIVE STATE)
 
 // Visuzalization
 endonasal_teleop::matrix8 markersMsg;
@@ -77,11 +73,10 @@ double rosLoopRate = 200.0;
 Eigen::Matrix4d omniPose; // TODO: do we need all of these as globals?
 Eigen::Matrix4d prevOmni;
 Eigen::Matrix4d curOmni;
-Eigen::Matrix4d Tregs;
+//Eigen::Matrix4d Tregs;
 Eigen::Matrix4d OmniDeltaOmniCoords;
 Eigen::Matrix4d prevOmniInv;
 Eigen::Matrix4d omniDeltaCannulaCoords;
-Eigen::Matrix4d omniFrameAtClutch;
 double omniScaleFactor = 0.30;
 Eigen::Vector3d zeroVec = Eigen::Vector3d::Zero();
 
@@ -99,8 +94,9 @@ Eigen::Vector3d alpha;
 Eigen::Matrix3d Rtip;
 Eigen::Matrix3d RBishop;
 
+// TODO: omni message has been reformatted to stream Matrix4d & button msgs -> modify to read this in
 geometry_msgs::Pose tempMsg;
-void omniCallback(const geometry_msgs::Pose &msg)
+void omniCallback(const geometry_msgs::Pose &msg) // TODO: refactor this to not use tempMsg...
 {
 	tempMsg = msg;
 
@@ -137,12 +133,6 @@ void omniButtonCallback(const std_msgs::Int8 &buttonMsg)
 //RoboticsMath::Vector6d ResolvedRates::InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
 RoboticsMath::Vector6d InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
 {
-  // TODO: need to be able to parse device number
-
-
-  Eigen::Vector3d zeroVec;
-  zeroVec.fill(0);
-
     omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
     omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
     Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
@@ -177,7 +167,7 @@ RoboticsMath::Vector6d InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
     return desTwist;
 }
 
-endonasal_teleop::matrix8 VisualizeRobot(CTR3Robot robot)
+endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
 {
   //// Publish visualizations to rviz
 
@@ -220,37 +210,28 @@ endonasal_teleop::matrix8 VisualizeRobot(CTR3Robot robot)
 
 int main(int argc, char *argv[])
 {
+  // ----------------- MAIN LOOP STRUCTURE -----------------
 
-  // Main Loop structure
+      // while (okay)
+      // nextState = stepState(curState);
+      // endwhile
 
-  // while (okay)
-  // nextState = stepState(curState);
-  // endwhile
-
-  // --> INIT state
-  //    --> at the end, segue to IDLE
-  // --> IDLE State
-  //    --> listen for event triggers to SIM or ACTIVE
-  // --> ACTIVE State
-  //    --> enable motors and listen to input devices
-  //    --> listen for trigger back to IDLE
-  // --> SIM State
-  //    --> disable motors and listen to input devices
-  //    --> listen for trigger back to IDLE
-  //
-
+      // --> INIT state
+      //    --> at the end, segue to IDLE
+      // --> IDLE State
+      //    --> listen for event triggers to SIM or ACTIVE
+      // --> ACTIVE State
+      //    --> enable motors and listen to input devices
+      //    --> listen for trigger back to IDLE
+      // --> SIM State
+      //    --> disable motors and listen to input devices
+      //    --> listen for trigger back to IDLE
+      //
 
 
-
+  // TODO: the code below should be run in the INIT STATE
   // ---------------------------------------------------------------------------------------
   // --------------------------------------------------------------------------------------- TODO: <initAllRobots()>
-
-  // Omni Registration Vars
-//  Eigen::Matrix4d OmniReg = Eigen::Matrix4d::Identity();
-//  Eigen::MatrixXd RotY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
-//  Mtransform::SetRotation(OmniReg,RotY);
-//  Eigen::Vector3d zeroVec;
-//  zeroVec.fill(0);
 
   // Start this ROS node on network
   ros::init(argc, argv, "endonasal_teleop");
@@ -359,8 +340,9 @@ int main(int argc, char *argv[])
 
 
     // All of this will be in either SIM or ACTIVE states
-    curOmni = omniPose;
-    pTip = pTipCur;
+    curOmni = omniPose; // Omni Update
+
+    pTip = pTipCur; // CTR3Robot Update
     qTip = qTipCur;
     qBishop = qBishopCur;
     alpha = alphaCur;
@@ -378,12 +360,11 @@ int main(int argc, char *argv[])
 
       if (justClutched == true) // Set reference to this first frame
       {
-        omniFrameAtClutch = omniPose;
         prevOmni = omniPose;
-        Tregs = RoboticsMath::assembleTransformation(RBishop.transpose(),zeroVec); // TODO: need to make sure this gets updated
         justClutched = false;
       }
 
+      // This is computed from prevOmni & curOmni, then fed into InputDeviceTwist() to get desTwist
       Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
 
       RoboticsMath::Vector6d desTwist;
@@ -392,14 +373,16 @@ int main(int argc, char *argv[])
       newQ = rr1.step(desTwist);
       prevOmni = curOmni;
 
-      // TODO: send out joint commands
+      // TODO: update vizualization if in ACTIVE or SIM STATES
+      // TODO: write to motors if in ACTIVE STATE
+
 
     }
 
     // TODO: this is slow, need to implement only update if new kinematics
-    needle_pub.publish(VisualizeRobot(rr1.GetRobot()));
-//    needle_pub.publish(VisualizeRobot(rr2.GetRobot()));
-//    needle_pub.publish(VisualizeRobot(rr3.GetRobot()));
+    needle_pub.publish(GenerateRobotVisualizationMarkers(rr1.GetRobot()));
+//    needle_pub.publish(GenerateRobotVisualizationMarkers(rr2.GetRobot()));
+//    needle_pub.publish(GenerateRobotVisualizationMarkers(rr3.GetRobot()));
 
     // sleep
     ros::spinOnce();
