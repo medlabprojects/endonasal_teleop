@@ -1,0 +1,88 @@
+Endonasal_Teleop_Param_Server:
+		NumberOfRobots: 3    
+        R1EndEffectorType: 'gripper'
+        R1Tube1:
+            L1: 222.5E-3
+            OD1: 1.165E-3
+            ID1: 1.067E-3
+            E: 60E9
+            L1Curved: 42.2E-3
+            k1r: 63.5E-3
+            PsiL1Home: 0.0
+            Beta1Home: -160.9E-3
+        R1Tube2:
+            L2: 163E-3
+            OD2: 2.0574E-3
+            ID2: 1.6002E-3
+            E: 60E9
+            L2Curved: 38.0E-3
+            k2r: 51.2E-3
+            PsiL2Home: 0.0
+            Beta2Home: -127.2E-3
+        R1Tube3:
+            L3: 104.4E-3
+            OD3: 2.540E-3
+            ID3: 2.248E-3
+            E: 60E9
+            L3Curved: 21.3E-3
+            k3r: 71.4E-3
+            PsiL3Home: 0.0
+            Beta3Home: -86.4E-3
+
+      R2EndEffectorType: 'gripper'
+      R2Tube1:
+          L1: 222.5E-3
+          OD1: 1.165E-3
+          ID1: 1.067E-3
+          E: 60E9
+          L1Curved: 42.2E-3
+          k1r: 63.5E-3
+          PsiL1Home: 0.0
+          Beta1Home: -160.9E-3
+      R2Tube2:
+          L2: 163E-3
+          OD2: 2.0574E-3
+          ID2: 1.6002E-3
+          E: 60E9
+          L2Curved: 38.0E-3
+          k2r: 51.2E-3
+          PsiL2Home: 0.0
+          Beta2Home: -127.2E-3
+      R2Tube3:
+          L3: 104.4E-3
+          OD3: 2.540E-3
+          ID3: 2.248E-3
+          E: 60E9
+          L3Curved: 21.3E-3
+          k3r: 71.4E-3
+          PsiL3Home: 0.0
+          Beta3Home: -86.4E-3
+
+      R3EndEffectorType: 'laser'
+      R3Tube1:
+          L1: 222.5E-3
+          OD1: 1.165E-3
+          ID1: 1.067E-3
+          E: 60E9
+          L1Curved: 42.2E-3
+          k1r: 63.5E-3
+          PsiL1Home: 0.0
+          Beta1Home: -160.9E-3
+      R3Tube2:
+          L2: 163E-3
+          OD2: 2.0574E-3
+          ID2: 1.6002E-3
+          E: 60E9
+          L2Curved: 38.0E-3
+          k2r: 51.2E-3
+          PsiL2Home: 0.0
+          Beta2Home: -127.2E-3
+      R3Tube3:
+          L3: 104.4E-3
+          OD3: 2.540E-3
+          ID3: 2.248E-3
+          E: 60E9
+          L3Curved: 21.3E-3
+          k3r: 71.4E-3
+          PsiL3Home: 0.0
+          Beta3Home: -86.4E-3

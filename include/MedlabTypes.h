@@ -45,6 +45,8 @@ struct CTR3RobotParams {
   double ID3;
 };
 
+typedef std::tuple< CTR3RobotParams, CTR3RobotParams, CTR3RobotParams > ParamTuple;
+
 struct CTR3KinematicsInputVector { // format of the state vector fed into Kinematics_with_dense_output()
   Eigen::Vector3d PsiL;
   Eigen::Vector3d Beta;

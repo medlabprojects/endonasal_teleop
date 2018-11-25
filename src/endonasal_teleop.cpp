@@ -76,6 +76,11 @@ Eigen::Matrix4d curOmni;
 double omniScaleFactor = 0.30;
 Eigen::Vector3d zeroVec = Eigen::Vector3d::Zero();
 
+// RobotParams
+//medlab::CTR3RobotParams robot1Params;
+//medlab::CTR3RobotParams robot2Params;
+//medlab::CTR3RobotParams robot3Params;
+
 // TODO: omni message has been reformatted to stream Matrix4d & button msgs -> modify to read this in
 geometry_msgs::Pose tempMsg;
 void omniCallback(const geometry_msgs::Pose &msg) // TODO: refactor this to not use tempMsg...
@@ -193,6 +198,111 @@ endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
   return markersMsg;
 }
 
+// TODO: this doesn't work..but I think it's close
+medlab::CTR3RobotParams GetRobot1ParamsFromServer()
+{
+  // LOAD PARAMETER SERVER
+  if (ros::param::has("/Endonasal_Teleop_Param_Server/"))
+  {
+
+    std::string L1;
+    std::string L1Curved;
+    std::string OD1;
+    std::string ID1;
+    std::string E;
+    std::string k1r;
+    std::string PsiL1Home;
+    std::string Beta1Home;
+
+    std::string L2;
+    std::string L2Curved;
+    std::string OD2;
+    std::string ID2;
+    std::string k2r;
+    std::string PsiL2Home;
+    std::string Beta2Home;
+
+    std::string L3;
+    std::string L3Curved;
+    std::string OD3;
+    std::string ID3;
+    std::string k3r;
+    std::string PsiL3Home;
+    std::string Beta3Home;
+
+    // PARSE ROBOT 1
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L1",L1);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L1Curved",L1Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/OD1",OD1);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID1",ID1);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/E",E);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k1r",k1r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL1Home",PsiL1Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta1Home",Beta1Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L2",L2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L2Curved",L2Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/OD2",OD2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID2",ID2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k2r",k2r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL2Home",PsiL2Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta2Home",Beta2Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L3",L3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L3Curvedt",L3Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/OD3",OD3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID3",ID3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k3r",k3r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL3Home",PsiL3Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta3Home",Beta3Home);
+
+    char* stopString;
+    double L1d = std::strtod(L1.c_str(),&stopString);
+    double L1Curvedd = std::strtod(L1Curved.c_str(),&stopString);
+    double OD1d = std::strtod(OD1.c_str(),&stopString);
+    double ID1d = std::strtod(ID1.c_str(),&stopString);
+    double Ed = std::strtod(E.c_str(),&stopString);
+    double k1rd = std::strtod(k1r.c_str(),&stopString);
+    double PsiL1Homed = std::strtod(PsiL1Home.c_str(),&stopString);
+    double Beta1Homed = std::strtod(Beta1Home.c_str(),&stopString);
+
+    double L2d = std::strtod(L2.c_str(),&stopString);
+    double L2Curvedd = std::strtod(L2Curved.c_str(),&stopString);
+    double OD2d = std::strtod(OD2.c_str(),&stopString);
+    double ID2d = std::strtod(ID2.c_str(),&stopString);
+    double k2rd = std::strtod(k2r.c_str(),&stopString);
+    double PsiL2Homed = std::strtod(PsiL2Home.c_str(),&stopString);
+    double Beta2Homed = std::strtod(Beta2Home.c_str(),&stopString);
+
+    double L3d = std::strtod(L3.c_str(),&stopString);
+    double L3Curvedd = std::strtod(L3Curved.c_str(),&stopString);
+    double OD3d = std::strtod(OD3.c_str(),&stopString);
+    double ID3d = std::strtod(ID3.c_str(),&stopString);
+    double k3rd = std::strtod(k3r.c_str(),&stopString);
+    double PsiL3Homed = std::strtod(PsiL3Home.c_str(),&stopString);
+    double Beta3Homed = std::strtod(Beta3Home.c_str(),&stopString);
+
+    medlab::CTR3RobotParams robot1Params;
+    robot1Params.L1 = L1d;
+    robot1Params.Lt1 = L1d - L1Curvedd;
+    robot1Params.OD1 = OD1d;
+    robot1Params.ID1 = ID1d;
+    robot1Params.E = Ed;
+    robot1Params.k1 = 1.0/k1rd;
+    robot1Params.L2 = L2d;
+    robot1Params.Lt2 = L2d - L2Curvedd;
+    robot1Params.OD2 = OD2d;
+    robot1Params.ID2 = ID2d;
+    robot1Params.k2 = 1.0/k2rd;
+    robot1Params.L3 = L3d;
+    robot1Params.Lt3 = L3d - L3Curvedd;
+    robot1Params.OD3 = OD3d;
+    robot1Params.ID3 = ID3d;
+    robot1Params.k3 = 1.0/k3rd;
+
+    return robot1Params;
+  }
+
+}
+
 int main(int argc, char *argv[])
 {
   // ----------------- MAIN LOOP STRUCTURE -----------------
@@ -242,6 +352,7 @@ int main(int argc, char *argv[])
   robot1Params.k3 = 1.0/71.4E-3;
   robot1Params.OD3 = 2.540E-3;
   robot1Params.ID3 = 2.248E-3;
+  //medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer();
 
   typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
@@ -297,7 +408,6 @@ int main(int argc, char *argv[])
   // --------------------------------------------------------------------------------------- </initAllRobots()>
 
 
-
   // SUBSCRIBERS
   ros::Subscriber omniButtonSub = node.subscribe("Buttonstates", 1, omniButtonCallback);
   ros::Subscriber omniPoseSub = node.subscribe("Omnipos", 1, omniCallback);
@@ -306,23 +416,17 @@ int main(int argc, char *argv[])
   ros::Publisher needle_pub = node.advertise<endonasal_teleop::matrix8>("needle_position",10);
   ros::Publisher pubEncoderCommand1 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB1/encoder_command", 1); // EC13
   ros::Publisher pubEncoderCommand2 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB4/encoder_command", 1); // EC16
-  //clients
+
   // ROS RATE
   ros::Rate r(rosLoopRate);
-
-
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-
-
 
   while (ros::ok())
   {
 
-    // TODO: setup initAllRobots() in here..
-    // This is where the state machine lives
-    // Init will pull from parameter server in here
+    std::cout << robot1Params.ID1 << std::endl;
+    std::cout << robot1Params.OD1 << std::endl;
 
+    // -------------------- FOR A GIVEN ACTIVE OMNI/RRC:-------------------------------
 
     // TODO: need to link an omni device to an instance of ResolvedRatesController (rr.SetInputDevice())
     // All of this will be in either SIM or ACTIVE states
@@ -357,9 +461,9 @@ int main(int argc, char *argv[])
     // TODO: this is slow, need to implement only update if new kinematics
     // TODO: we should have one large message with all markers for all robots?
 
-    needle_pub.publish(GenerateRobotVisualizationMarkers(rr1.GetRobot()));
-//    needle_pub.publish(GenerateRobotVisualizationMarkers(rr2.GetRobot()));
-//    needle_pub.publish(GenerateRobotVisualizationMarkers(rr3.GetRobot()));
+    needle_pub.publish(GenerateRobotVisualizationMarkers(rr1.GetRobot())); // TODO: need to still publish non-active robots
+
+    // ---------------------------------------------------------------------------------
 
     // sleep
     ros::spinOnce();
