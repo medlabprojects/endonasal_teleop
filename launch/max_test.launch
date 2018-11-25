@@ -1,14 +1,11 @@
 <launch>
-<!--
-<rosparam command="load" file="$(find endonasal_teleop)/config/CannulaExample1.yaml" />
-<node pkg="rostopic" type="rostopic" name="rostopic" args="echo /Omnipos"/>
+
+<rosparam command="load" file="$(find endonasal_teleop)/config/Endonasal_Teleop_Param_Server.yaml" />
+<!--<node pkg="rostopic" type="rostopic" name="rostopic" args="echo /Omnipos"/>
 -->
 <node pkg="endonasal_teleop" type="workspace_display" name="workspace_display"/>
 <node pkg="endonasal_teleop" type="endonasal_teleop" name="endonasal_teleop"/>
-<!--<node pkg="endonasal_teleop" type="resolved_rates" name="resolved_rates" output = "screen"/>
-<node pkg="endonasal_teleop" type="kinematics" name="kinematics" output="screen"/>
--->
-<!-- <node pkg="rosserial_server" type="socket_node" name="rosserial_server" required="true" output = "screen"/> -->
+
 
 <node pkg="rviz" type="rviz" name="rviz" required="true"/>
 

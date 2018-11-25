@@ -54,7 +54,7 @@ void Callback(const endonasal_teleop::matrix8& msg)
 
     return;
 }
-visualization_msgs::Marker ComputeMarkerPoseAndColor(int i) // TODO: only plot at s >= (beta=0) --> cleaner viz
+visualization_msgs::Marker ComputeMarkerPoseAndColor(int i)
 {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "/world";
@@ -220,15 +220,18 @@ int main(int argc, char** argv)
             {
                 visualization_msgs::Marker marker = ComputeMarkerPoseAndColor(i);
 
-                // Publish marker
-                std::cout<<"published"<<std::endl;
-                shape_pub.publish(marker);
-                ID=ID+1;
-                if (ID==length)
+                if (marker.pose.position.z > 0) // only publish markers in front of plate
                 {
-                    ID=0;
-                    length=0;
-                    new_message=false;
+                  // Publish marker
+                  std::cout<<"published"<<std::endl;
+                  shape_pub.publish(marker);
+                  ID=ID+1;
+                  if (ID==length)
+                  {
+                      ID=0;
+                      length=0;
+                      new_message=false;
+                  }
                 }
             }
 

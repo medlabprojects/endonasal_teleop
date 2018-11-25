@@ -198,7 +198,6 @@ endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
   return markersMsg;
 }
 
-// TODO: this doesn't work..but I think it's close
 medlab::CTR3RobotParams GetRobot1ParamsFromServer()
 {
   // LOAD PARAMETER SERVER
@@ -237,22 +236,24 @@ medlab::CTR3RobotParams GetRobot1ParamsFromServer()
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID1",ID1);
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/E",E);
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k1r",k1r);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL1Home",PsiL1Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL1Home",PsiL1Home); // TODO: set qHome from these..
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta1Home",Beta1Home);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L2",L2);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L2Curved",L2Curved);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/OD2",OD2);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID2",ID2);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k2r",k2r);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL2Home",PsiL2Home);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta2Home",Beta2Home);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L3",L3);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L3Curvedt",L3Curved);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/OD3",OD3);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID3",ID3);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k3r",k3r);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL3Home",PsiL3Home);
-    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta3Home",Beta3Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/L2",L2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/L2Curved",L2Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/OD2",OD2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/ID2",ID2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/k2r",k2r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/PsiL2Home",PsiL2Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/Beta2Home",Beta2Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/L3",L3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/L3Curvedt",L3Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/OD3",OD3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/ID3",ID3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/k3r",k3r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/PsiL3Home",PsiL3Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/Beta3Home",Beta3Home);
+
+    std::cout << "OD3" << std::endl;
 
     char* stopString;
     double L1d = std::strtod(L1.c_str(),&stopString);
@@ -352,7 +353,7 @@ int main(int argc, char *argv[])
   robot1Params.k3 = 1.0/71.4E-3;
   robot1Params.OD3 = 2.540E-3;
   robot1Params.ID3 = 2.248E-3;
-  //medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer();
+//  medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer(); // TODO: this doesn't work..but I think it's close
 
   typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
