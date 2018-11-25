@@ -12,13 +12,11 @@ CTR3Robot::CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params,
   qHome_(qHome),
   BaseFrame_WORLD(baseFrame)
 {
-  nInterp_ = 200; // Default interp points
+  nInterp_ = 200; // Default number of interp points
 }
 
 bool CTR3Robot::init()
 {
-
-  //  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; //TODO: this needs to be updated for new tubes
   currKinematicsInputVector_.PsiL = qHome_.head(3);
   currKinematicsInputVector_.Beta = qHome_.tail(3);
   currKinematicsInputVector_.Ftip = Eigen::Vector3d::Zero();
@@ -169,7 +167,6 @@ Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin)
     Eigen::Vector4d qi = kin.dense_state_output.at( i ).q;
     Eigen::Matrix4d gi = RoboticsMath::assembleTransformation(RoboticsMath::quat2rotm(qi),pi);
     Eigen::Matrix4d gStari = BaseFrame_WORLD*gStarL*gi;
-//    Eigen::Matrix4d gStari = gStarL*gi;
     RoboticsMath::Vector8d xi;
     xi.fill(0);
     xi.head<7>() = RoboticsMath::collapseTransform(gStari);

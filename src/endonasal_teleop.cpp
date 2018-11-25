@@ -2,16 +2,6 @@
 // This is the main script that will run the endonasal system. 
 // This is currently configured to launch 3 CTR3Robots
 
-// NOTE: most of this code is from the experiment resolved_rates.cpp file, and used for reference for the ResolvedRatesController.cpp class
-// TODO: refactor this to:
-//  --> initialize all ROS-related things (cleanup topics,messages & nodes as most of that message traffic is accounted for by the new classes
-//  --> initialize 3 instances of the CTR3Robot class -> read from parameter server or xml file?
-//  --> initialize 3 instances of the ResolvedRatesController class and link to the appropriate CTR3Robot
-//  --> initialize however many controllers we have (omni nodes?) and do processing in THIS script to handle transformations, and feed ResovledRatesController class the desTwist
-//  --> handle visualization by pulling from CTR3Robot class's current interpolated backbone and publishing pts as markers or tubes? (Snare system using tubes instead of markers..)
-// -> for all references to math/robotics math functions, use namespace RobotMath::deg2rad() for ex. and just #include "RobotMath.h"
-// -> still need to implement haptic damper on omninode side..needs faster update rate to feel good
-
 // Qt headers
 #include <QCoreApplication>
 #include <QVector>
@@ -81,10 +71,10 @@ int motorControlState = 0;
 // Visuzalization
 endonasal_teleop::matrix8 markersMsg;
 
-double rosLoopRate = 100.0;
+double rosLoopRate = 200.0;
 
 // Omni
-Eigen::Matrix4d omniPose;
+Eigen::Matrix4d omniPose; // TODO: do we need all of these as globals?
 Eigen::Matrix4d prevOmni;
 Eigen::Matrix4d curOmni;
 Eigen::Matrix4d Tregs;
@@ -93,6 +83,7 @@ Eigen::Matrix4d prevOmniInv;
 Eigen::Matrix4d omniDeltaCannulaCoords;
 Eigen::Matrix4d omniFrameAtClutch;
 double omniScaleFactor = 0.30;
+Eigen::Vector3d zeroVec = Eigen::Vector3d::Zero();
 
 Eigen::Matrix4d robotTipFrame;
 Eigen::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
@@ -255,19 +246,17 @@ int main(int argc, char *argv[])
   // --------------------------------------------------------------------------------------- TODO: <initAllRobots()>
 
   // Omni Registration Vars
-  Eigen::Matrix4d OmniReg = Eigen::Matrix4d::Identity();
-  Eigen::MatrixXd RotY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
-  Mtransform::SetRotation(OmniReg,RotY);
-  //Eigen::Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
-  Eigen::Vector3d zeroVec;
-  zeroVec.fill(0);
+//  Eigen::Matrix4d OmniReg = Eigen::Matrix4d::Identity();
+//  Eigen::MatrixXd RotY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
+//  Mtransform::SetRotation(OmniReg,RotY);
+//  Eigen::Vector3d zeroVec;
+//  zeroVec.fill(0);
 
   // Start this ROS node on network
   ros::init(argc, argv, "endonasal_teleop");
   ros::NodeHandle node;
 
-  // TODO: get below from parameter server
-
+  // -------------------------------------------------------------------------- TODO: <getParamsFromServer()>
   // <CTR3ROBOT 1 DEFINITION/> --------------------------------
   medlab::CTR3RobotParams robot1Params;
   robot1Params.E = 60E9;
@@ -311,42 +300,35 @@ int main(int argc, char *argv[])
   // </CTR3ROBOT 1 DEFINITION> ---------------------------------
 
 
-  // <CTR3ROBOT 2 DEFINITION> ----------------------------------
-  Eigen::Matrix4d robot2BaseFrame = Eigen::Matrix4d::Identity();
-  robot2BaseFrame(0,3) = -10.0E-3;
-  // </CTR3ROBOT 2 DEFINITION> ---------------------------------
+//  // <CTR3ROBOT 2 DEFINITION> ----------------------------------
+//  Eigen::Matrix4d robot2BaseFrame = Eigen::Matrix4d::Identity();
+//  robot2BaseFrame(0,3) = -10.0E-3;
+//  // </CTR3ROBOT 2 DEFINITION> ---------------------------------
 
 
-  // <CTR3ROBOT 3 DEFINITION> ----------------------------------
-  Eigen::Matrix4d robot3BaseFrame = Eigen::Matrix4d::Identity();
-  robot3BaseFrame(0,2) = -10.0E-3;
-  // </CTR3ROBOT 3 DEFINITION> ---------------------------------
+//  // <CTR3ROBOT 3 DEFINITION> ----------------------------------
+//  Eigen::Matrix4d robot3BaseFrame = Eigen::Matrix4d::Identity();
+//  robot3BaseFrame(0,2) = -10.0E-3;
+//  // </CTR3ROBOT 3 DEFINITION> ---------------------------------
 
 
   // Initialize robot with controller
-  // robot1Params = getParametersFromServer(1);
   ResolvedRatesController rr1(cannula,robot1Params,robot1Home,robot1BaseFrame);
   rr1.init();
 
-  ResolvedRatesController rr2(cannula,robot1Params,robot1Home,robot2BaseFrame);
-  rr2.init();
+//  ResolvedRatesController rr2(cannula,robot1Params,robot1Home,robot2BaseFrame);
+//  rr2.init();
 
-  ResolvedRatesController rr3(cannula,robot1Params,robot1Home,robot3BaseFrame);
-  rr3.init();
-
-  // -------------------------------------------------------------------------------
-  //        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
-  //        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
-  //        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
-  //        std::cout << "Jtip" << robot1.currKinematics.Jtip << std::endl << std::endl;
+//  ResolvedRatesController rr3(cannula,robot1Params,robot1Home,robot3BaseFrame);
+//  rr3.init();
 
   //        McbRos* motorBoard1;
   //        std::string motorBoard1NodeName = ui_.lineEdit_nodeName->text().toStdString();
   //        motorBoard1->init(motorBoard1NodeName);
 
+  // ------------------------------------------------------------------</getParamsFromServer()>
   // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // --------------------------------------------------------------------------------------- </initAllRobots>
+  // --------------------------------------------------------------------------------------- </initAllRobots()>
 
 
 
@@ -416,8 +398,8 @@ int main(int argc, char *argv[])
 
     // TODO: this is slow, need to implement only update if new kinematics
     needle_pub.publish(VisualizeRobot(rr1.GetRobot()));
-    needle_pub.publish(VisualizeRobot(rr2.GetRobot()));
-    needle_pub.publish(VisualizeRobot(rr3.GetRobot()));
+//    needle_pub.publish(VisualizeRobot(rr2.GetRobot()));
+//    needle_pub.publish(VisualizeRobot(rr3.GetRobot()));
 
     // sleep
     ros::spinOnce();
