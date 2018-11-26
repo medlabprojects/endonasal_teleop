@@ -201,33 +201,33 @@ endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
 medlab::CTR3RobotParams GetRobot1ParamsFromServer()
 {
   // LOAD PARAMETER SERVER
-  if (ros::param::has("/Endonasal_Teleop_Param_Server/"))
-  {
+//  if (ros::param::has("/Endonasal_Teleop_Param_Server/"))
+//  {
 
-    std::string L1;
-    std::string L1Curved;
-    std::string OD1;
-    std::string ID1;
-    std::string E;
-    std::string k1r;
-    std::string PsiL1Home;
-    std::string Beta1Home;
+    double L1;
+    double L1Curved;
+    double OD1;
+    double ID1;
+    double E;
+    double k1r;
+    double PsiL1Home;
+    double Beta1Home;
 
-    std::string L2;
-    std::string L2Curved;
-    std::string OD2;
-    std::string ID2;
-    std::string k2r;
-    std::string PsiL2Home;
-    std::string Beta2Home;
+    double L2;
+    double L2Curved;
+    double OD2;
+    double ID2;
+    double k2r;
+    double PsiL2Home;
+    double Beta2Home;
 
-    std::string L3;
-    std::string L3Curved;
-    std::string OD3;
-    std::string ID3;
-    std::string k3r;
-    std::string PsiL3Home;
-    std::string Beta3Home;
+    double L3;
+    double L3Curved;
+    double OD3;
+    double ID3;
+    double k3r;
+    double PsiL3Home;
+    double Beta3Home;
 
     // PARSE ROBOT 1
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L1",L1);
@@ -253,54 +253,60 @@ medlab::CTR3RobotParams GetRobot1ParamsFromServer()
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/PsiL3Home",PsiL3Home);
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/Beta3Home",Beta3Home);
 
-    std::cout << "OD3" << std::endl;
+    std::cout << "OD3" << OD3 << std::endl;
 
-    char* stopString;
-    double L1d = std::strtod(L1.c_str(),&stopString);
-    double L1Curvedd = std::strtod(L1Curved.c_str(),&stopString);
-    double OD1d = std::strtod(OD1.c_str(),&stopString);
-    double ID1d = std::strtod(ID1.c_str(),&stopString);
-    double Ed = std::strtod(E.c_str(),&stopString);
-    double k1rd = std::strtod(k1r.c_str(),&stopString);
-    double PsiL1Homed = std::strtod(PsiL1Home.c_str(),&stopString);
-    double Beta1Homed = std::strtod(Beta1Home.c_str(),&stopString);
+//    std::string::size_type stopString;
+    //char* stopString;
+//    double L1d = std::atof(L1.c_str());
+//    double L1d = std::strtod(L1.c_str(),0);
+//    std::cout << L1d << std::endl;
+//    double L1d = std::stod(L1.c_str(),NULL);
+//    double L1Curvedd = std::stod(L1Curved.c_str(),NULL);
+//    double OD1d = std::stod(OD1.c_str(),NULL);
+//    double ID1d = std::stod(ID1.c_str(),NULL);
+//    double Ed = std::stod(E.c_str(),NULL);
+//    double k1rd = std::stod(k1r.c_str(),NULL);
+//    double PsiL1Homed = std::stod(PsiL1Home.c_str(),NULL);
+//    double Beta1Homed = std::stod(Beta1Home.c_str(),NULL);
 
-    double L2d = std::strtod(L2.c_str(),&stopString);
-    double L2Curvedd = std::strtod(L2Curved.c_str(),&stopString);
-    double OD2d = std::strtod(OD2.c_str(),&stopString);
-    double ID2d = std::strtod(ID2.c_str(),&stopString);
-    double k2rd = std::strtod(k2r.c_str(),&stopString);
-    double PsiL2Homed = std::strtod(PsiL2Home.c_str(),&stopString);
-    double Beta2Homed = std::strtod(Beta2Home.c_str(),&stopString);
+//    double L2d = std::stod(L2.c_str(),NULL);
+//    double L2Curvedd = std::stod(L2Curved.c_str(),NULL);
+//    double OD2d = std::stod(OD2.c_str(),NULL);
+//    double ID2d = std::stod(ID2.c_str(),NULL);
+//    double k2rd = std::stod(k2r.c_str(),NULL);
+//    double PsiL2Homed = std::stod(PsiL2Home.c_str(),NULL);
+//    double Beta2Homed = std::stod(Beta2Home.c_str(),NULL);
 
-    double L3d = std::strtod(L3.c_str(),&stopString);
-    double L3Curvedd = std::strtod(L3Curved.c_str(),&stopString);
-    double OD3d = std::strtod(OD3.c_str(),&stopString);
-    double ID3d = std::strtod(ID3.c_str(),&stopString);
-    double k3rd = std::strtod(k3r.c_str(),&stopString);
-    double PsiL3Homed = std::strtod(PsiL3Home.c_str(),&stopString);
-    double Beta3Homed = std::strtod(Beta3Home.c_str(),&stopString);
+//    double L3d = std::stod(L3.c_str(),NULL);
+//    double L3Curvedd = std::stod(L3Curved.c_str(),NULL);
+//    double OD3d = std::stod(OD3.c_str(),NULL);
+//    double ID3d = std::stod(ID3.c_str(),NULL);
+//    double k3rd = std::stod(k3r.c_str(),NULL);
+//    double PsiL3Homed = std::stod(PsiL3Home.c_str(),NULL);
+//    double Beta3Homed = std::stod(Beta3Home.c_str(),NULL);
 
     medlab::CTR3RobotParams robot1Params;
-    robot1Params.L1 = L1d;
-    robot1Params.Lt1 = L1d - L1Curvedd;
-    robot1Params.OD1 = OD1d;
-    robot1Params.ID1 = ID1d;
-    robot1Params.E = Ed;
-    robot1Params.k1 = 1.0/k1rd;
-    robot1Params.L2 = L2d;
-    robot1Params.Lt2 = L2d - L2Curvedd;
-    robot1Params.OD2 = OD2d;
-    robot1Params.ID2 = ID2d;
-    robot1Params.k2 = 1.0/k2rd;
-    robot1Params.L3 = L3d;
-    robot1Params.Lt3 = L3d - L3Curvedd;
-    robot1Params.OD3 = OD3d;
-    robot1Params.ID3 = ID3d;
-    robot1Params.k3 = 1.0/k3rd;
+//    robot1Params.L1 = L1d;
+//    robot1Params.Lt1 = L1d - L1Curvedd;
+//    robot1Params.OD1 = OD1d;
+//    robot1Params.ID1 = ID1d;
+//    robot1Params.E = Ed;
+//    robot1Params.k1 = 1.0/k1rd;
+//    robot1Params.L2 = L2d;
+//    robot1Params.Lt2 = L2d - L2Curvedd;
+//    robot1Params.OD2 = OD2d;
+//    robot1Params.ID2 = ID2d;
+//    robot1Params.k2 = 1.0/k2rd;
+//    robot1Params.L3 = L3d;
+//    robot1Params.Lt3 = L3d - L3Curvedd;
+//    robot1Params.OD3 = OD3d;
+//    robot1Params.ID3 = ID3d;
+//    robot1Params.k3 = 1.0/k3rd;
+
+//    std::cout << robot1Params.L1 << std::endl;
 
     return robot1Params;
-  }
+//  }
 
 }
 
@@ -335,25 +341,25 @@ int main(int argc, char *argv[])
 
   // -------------------------------------------------------------------------- TODO: <getParamsFromServer()>
   // <CTR3ROBOT 1 DEFINITION/> --------------------------------
-  medlab::CTR3RobotParams robot1Params;
-  robot1Params.E = 60E9;
-  robot1Params.G = 60E9 / 2.0 / 1.33;
-  robot1Params.L1 = 222.5E-3;
-  robot1Params.Lt1 = robot1Params.L1 - 42.2E-3;
-  robot1Params.k1 = 1.0/63.5E-3;
-  robot1Params.OD1 = 1.165E-3;
-  robot1Params.ID1 = 1.067E-3;
-  robot1Params.L2 = 163E-3;
-  robot1Params.Lt2 = robot1Params.L2 - 38.0E-3;
-  robot1Params.k2 = 1.0/51.2E-3;
-  robot1Params.OD2 = 2.0574E-3;
-  robot1Params.ID2 = 1.6002E-3;
-  robot1Params.L3 = 104.4E-3;
-  robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
-  robot1Params.k3 = 1.0/71.4E-3;
-  robot1Params.OD3 = 2.540E-3;
-  robot1Params.ID3 = 2.248E-3;
-//  medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer(); // TODO: this doesn't work..but I think it's close
+//  medlab::CTR3RobotParams robot1Params;
+//  robot1Params.E = 60E9;
+//  robot1Params.G = 60E9 / 2.0 / 1.33;
+//  robot1Params.L1 = 222.5E-3;
+//  robot1Params.Lt1 = robot1Params.L1 - 42.2E-3;
+//  robot1Params.k1 = 1.0/63.5E-3;
+//  robot1Params.OD1 = 1.165E-3;
+//  robot1Params.ID1 = 1.067E-3;
+//  robot1Params.L2 = 163E-3;
+//  robot1Params.Lt2 = robot1Params.L2 - 38.0E-3;
+//  robot1Params.k2 = 1.0/51.2E-3;
+//  robot1Params.OD2 = 2.0574E-3;
+//  robot1Params.ID2 = 1.6002E-3;
+//  robot1Params.L3 = 104.4E-3;
+//  robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
+//  robot1Params.k3 = 1.0/71.4E-3;
+//  robot1Params.OD3 = 2.540E-3;
+//  robot1Params.ID3 = 2.248E-3;
+  medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer(); // TODO: this doesn't work..but I think it's close
 
   typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
@@ -424,8 +430,8 @@ int main(int argc, char *argv[])
   while (ros::ok())
   {
 
-    std::cout << robot1Params.ID1 << std::endl;
-    std::cout << robot1Params.OD1 << std::endl;
+//    std::cout << robot1Params.ID1 << std::endl;
+//    std::cout << robot1Params.OD1 << std::endl;
 
     // -------------------- FOR A GIVEN ACTIVE OMNI/RRC:-------------------------------
 

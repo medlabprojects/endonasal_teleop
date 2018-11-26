@@ -223,7 +223,7 @@ int main(int argc, char** argv)
                 if (marker.pose.position.z > 0) // only publish markers in front of plate
                 {
                   // Publish marker
-                  std::cout<<"published"<<std::endl;
+                  //std::cout<<"published"<<std::endl;
                   shape_pub.publish(marker);
                   ID=ID+1;
                   if (ID==length)

@@ -4,7 +4,7 @@
 <!--<node pkg="rostopic" type="rostopic" name="rostopic" args="echo /Omnipos"/>
 -->
 <node pkg="endonasal_teleop" type="workspace_display" name="workspace_display"/>
-<node pkg="endonasal_teleop" type="endonasal_teleop" name="endonasal_teleop"/>
+<node pkg="endonasal_teleop" type="endonasal_teleop" name="endonasal_teleop" output="screen"/>
 
 
 <node pkg="rviz" type="rviz" name="rviz" required="true"/>
