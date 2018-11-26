@@ -1,10 +1,9 @@
 #include "ResolvedRatesController.h"
 
-ResolvedRatesController::ResolvedRatesController(medlab::Cannula3 cannula, medlab::CTR3RobotParams params):
-  robot_(cannula,params)
+ResolvedRatesController::ResolvedRatesController(medlab::Cannula3 cannula, medlab::CTR3RobotParams params,
+                                                 RoboticsMath::Vector6d qHome, Eigen::Matrix4d baseFrame):
+  robot_(cannula,params,qHome,baseFrame)
 {
-  // we might want to specify what control scheme to use, which weighting matrices
-  // --> might also make sense to overload/have a default for the control scheme
   lambdaTracking_ = 1.0E8;
   lambdaDamping_ = 0.5;
   lambdaJL_ = 1.0E3;
@@ -19,9 +18,10 @@ void ResolvedRatesController::init()
 {
   // TODO:Construct w/ CTR3Robot with params and base frame
 
-  RoboticsMath::Vector6d qHome;
-  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; // TODO: update this for actual home position
-  robot_.init(qHome);
+  // Set Input Device
+  // Resolved Rates Prep --> extract ptip, qtip, Jtip, calc WJointLims
+  robot_.init();
+  RoboticsMath::Vector6d qHome = robot_.GetQHome();
 
   // Compute initial Weighting matrices
   SetTrackingGain(lambdaTracking_);
@@ -117,7 +117,7 @@ RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desT
     RoboticsMath::Vector6d vS = robot_.vS;
 
     A = Jp.transpose()*WTracking_*Jp + WDamping_ + WJointLims_ + WS;
-    b = Jp.transpose()*WTracking_*xDotDes;
+    b = Jp.transpose()*WTracking_*xDotDes + WS*vS;
   }
   else
   {
@@ -128,7 +128,6 @@ RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desT
   RoboticsMath::Vector6d desQDot;
   desQDot = A.partialPivLu().solve(b);
 
-  //  desQ = [desPsi1 desPsi2 desPsi3 desBeta1 desBeta2 desBeta3]
   RoboticsMath::Vector6d desQ;
   desQ = qVec + desQDot;
 

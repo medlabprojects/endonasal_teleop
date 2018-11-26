@@ -3,85 +3,57 @@
 #include <tuple>
 #include "RoboticsMath.h"
 #include "MedlabTypes.h"
-#include <Kinematics.h>
+#include "Kinematics.h"
 
-CTR3Robot::CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params):
-  cannula_(cannula), // Set cannula3
-  currCannulaParams_(params)
+CTR3Robot::CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params,
+                     RoboticsMath::Vector6d qHome, Eigen::Matrix4d baseFrame):
+  cannula_(cannula),
+  currCannulaParams_(params),
+  qHome_(qHome),
+  BaseFrame_WORLD(baseFrame)
 {
-
+  nInterp_ = 200; // Default number of interp points
 }
 
 bool CTR3Robot::init()
 {
-  // init with home position at zero
-  RoboticsMath::Vector6d qHome(RoboticsMath::Vector6d::Zero());
-  return init(qHome);
-}
-
-bool CTR3Robot::init(RoboticsMath::Vector6d qHome)
-{
-  bool success = false;
-
-  nInterp_ = 200;
-  qHome_ = qHome;                                                       // Store qHome
-  //  qHome << 0.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3; //TODO: this needs to be updated for new tubes
-  currKinematicsInputVector_.PsiL = qHome_.head(3);			// Store input vector as qHome
+  currKinematicsInputVector_.PsiL = qHome_.head(3);
   currKinematicsInputVector_.Beta = qHome_.tail(3);
   currKinematicsInputVector_.Ftip = Eigen::Vector3d::Zero();
   currKinematicsInputVector_.Ttip = Eigen::Vector3d::Zero();
-  currQVec_ << qHome_;                                                  // Store condensed input vector
+  currQVec_ << qHome_;
   currKinematics = callKinematicsWithDenseOutput(currKinematicsInputVector_); // currInterpolatedBackbone_ set in here
 
-  success = true;
-
-  return success;
+  return true;
 }
 
 medlab::Cannula3 CTR3Robot::GetCannula()
 {
   return cannula_;
 }
-
 medlab::CTR3RobotParams CTR3Robot::GetCurRobotParams()
 {
   return currCannulaParams_;
-}
-
-bool CTR3Robot::SetCurrKinematicsInputVector(medlab::CTR3KinematicsInputVector kinematicsInputVector)
-{
-  currKinematicsInputVector_ = kinematicsInputVector;
-  return true;
 }
 medlab::CTR3KinematicsInputVector CTR3Robot::GetCurrKinematicsInputVector()
 {
   return currKinematicsInputVector_;
 }
-
-bool CTR3Robot::SetCurrQVec(RoboticsMath::Vector6d qVec)
-{
-  currQVec_ = qVec;
-  return true;
-}
 RoboticsMath::Vector6d CTR3Robot::GetCurrQVec()
 {
   return currQVec_;
 }
-
-bool CTR3Robot::SetInterpolatedBackbone(medlab::InterpRet interpolatedBackbone)
-{
-  currInterpolatedBackbone_ = interpolatedBackbone;
-  return true;
+RoboticsMath::Vector6d CTR3Robot::GetQHome() {
+  return qHome_;
 }
+
 medlab::InterpRet CTR3Robot::GetInterpolatedBackbone()
 {
   return currInterpolatedBackbone_;
 }
-
 int CTR3Robot::GetNPts() {
   return nPts_;
 }
-
 int CTR3Robot::GetNInterp() {
   return nInterp_;
 }
@@ -155,7 +127,6 @@ medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsIn
 
   return kinoutput;
 }
-
 Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin)
 {
 
@@ -195,7 +166,7 @@ Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin)
     Eigen::Vector3d pi = kin.dense_state_output.at( i ).p;
     Eigen::Vector4d qi = kin.dense_state_output.at( i ).q;
     Eigen::Matrix4d gi = RoboticsMath::assembleTransformation(RoboticsMath::quat2rotm(qi),pi);
-    Eigen::Matrix4d gStari = gStarL*gi;
+    Eigen::Matrix4d gStari = BaseFrame_WORLD*gStarL*gi;
     RoboticsMath::Vector8d xi;
     xi.fill(0);
     xi.head<7>() = RoboticsMath::collapseTransform(gStari);
@@ -205,7 +176,6 @@ Eigen::MatrixXd CTR3Robot::forwardKinematics(auto kin)
 
   return poseData;
 }
-
 medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::MatrixXd poseDataRef, int nPts)
 {
   Eigen::Matrix<double, 4, Eigen::Dynamic> qRef;
@@ -301,8 +271,8 @@ medlab::InterpRet CTR3Robot::interpolateBackbone(Eigen::VectorXd sRef, Eigen::Ma
   return interpResults;
 
 }
-
-medlab::WeightingRet CTR3Robot::computeStabilityWeightingMatrix(RoboticsMath::Vector6d qVec, double S, double sThreshold, double alphaS)
+medlab::WeightingRet CTR3Robot::computeStabilityWeightingMatrix(RoboticsMath::Vector6d qVec, double S,
+                                                                double sThreshold, double alphaS)
 {
   RoboticsMath::Matrix6d W = (exp(1 / (S - sThreshold)) - 1) * RoboticsMath::Matrix6d::Identity();
   RoboticsMath::Vector6d vS1 = RoboticsMath::Vector6d::Zero();

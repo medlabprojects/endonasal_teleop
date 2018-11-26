@@ -77,17 +77,13 @@
 #include <vector>
 #include <cmath>
 
-// ---------------------------------------------------------------
-// DEF GLOBALS
-// ---------------------------------------------------------------
-
 // Motor Enable
-int motorControlState = 0;
+int motorControlState = 0; // TODO: handle this with the state machine (ACTIVE STATE)
 
 // Visuzalization
 endonasal_teleop::matrix8 markersMsg;
 
-double rosLoopRate = 100.0;
+double rosLoopRate = 200.0;
 
 Eigen::Matrix4d robotTipFrame;
 Eigen::Matrix4d robotTipFrameAtClutch; //clutch-in position of cannula
@@ -96,15 +92,9 @@ Eigen::Vector4d qTipCur;
 Eigen::Vector4d qBishopCur;
 Eigen::Vector3d alphaCur;
 
-Eigen::Vector3d pTip;
-Eigen::Vector4d qTip;
-Eigen::Vector4d qBishop;
-Eigen::Vector3d alpha;
-Eigen::Matrix3d Rtip;
-Eigen::Matrix3d RBishop;
-
+// TODO: omni message has been reformatted to stream Matrix4d & button msgs -> modify to read this in
 geometry_msgs::Pose tempMsg;
-void omniCallback(const geometry_msgs::Pose &msg)
+void omniCallback(const geometry_msgs::Pose &msg) // TODO: refactor this to not use tempMsg...
 {
 	tempMsg = msg;
 
@@ -139,56 +129,108 @@ void omniButtonCallback(const std_msgs::Int8 &buttonMsg)
 // ::setInputDeviceTransform(Matrix4d transform)
 // Vector6d ResolvedRates::transformInputDeviceTwist(Eigen::Matrix4d inputDeviceCoords){return RoboticsMath::Vector6d::Zero()};
 //RoboticsMath::Vector6d ResolvedRates::InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
-RoboticsMath::Vector6d InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
+RoboticsMath::Vector6d InputDeviceTwistUpdate()
 {
-  // TODO: need to be able to parse device number
+  // This uses the global curOmni and prevOmni vars to update desTwist
+  Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
 
+  omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
+  omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
+  Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
+  Eigen::Matrix4d omniDeltaOmniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDeltaOmniPenCoords*RPrevOmni.transpose());
 
-  Eigen::Vector3d zeroVec;
-  zeroVec.fill(0);
+  Eigen::Matrix3d Rd = curOmni.block<3,3>(0,0);
+  Eigen::Matrix3d Rc = prevOmni.block<3,3>(0,0);
+  Eigen::Matrix3d Re = Rd*Rc.transpose();
+  Re = RoboticsMath::orthonormalize(Re);
 
-    omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
-    omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
-    Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
-    Eigen::Matrix4d omniDeltaOmniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDeltaOmniPenCoords*RPrevOmni.transpose());
+  // desTwist should use OmniBaseCoords for linar velocity, and OmniPenCoords for angular velocity
+  RoboticsMath::Vector6d omniTwistOmniPenCoords;
+  omniTwistOmniPenCoords(0) = omniDeltaOmniPenCoords(0,3); // vx
+  omniTwistOmniPenCoords(1) = omniDeltaOmniPenCoords(1,3); // vy
+  omniTwistOmniPenCoords(2) = omniDeltaOmniPenCoords(2,3); // vz
+  omniTwistOmniPenCoords(3) = omniDeltaOmniPenCoords(2,1); // wx
+  omniTwistOmniPenCoords(4) = omniDeltaOmniPenCoords(0,2); // wy
+  omniTwistOmniPenCoords(5) = omniDeltaOmniPenCoords(1,0); // wz
 
-    Eigen::Matrix3d Rd = curOmni.block<3,3>(0,0);
-    Eigen::Matrix3d Rc = prevOmni.block<3,3>(0,0);
-    Eigen::Matrix3d Re = Rd*Rc.transpose();
-    Re = RoboticsMath::orthonormalize(Re);
+  RoboticsMath::Vector6d omniTwistOmniBaseCoords;
+  omniTwistOmniBaseCoords(0) = omniDeltaOmniBaseCoords(0,3);
+  omniTwistOmniBaseCoords(1) = omniDeltaOmniBaseCoords(1,3);
+  omniTwistOmniBaseCoords(2) = omniDeltaOmniBaseCoords(2,3);
+  omniTwistOmniBaseCoords(3) = omniDeltaOmniBaseCoords(2,1);
+  omniTwistOmniBaseCoords(4) = omniDeltaOmniBaseCoords(0,2);
+  omniTwistOmniBaseCoords(5) = omniDeltaOmniBaseCoords(1,0);
 
-    // desTwist should use OmniBaseCoords for linar velocity, and OmniPenCoords for angular velocity
-    RoboticsMath::Vector6d omniTwistOmniPenCoords;
-    omniTwistOmniPenCoords(0) = omniDeltaOmniPenCoords(0,3); // vx
-    omniTwistOmniPenCoords(1) = omniDeltaOmniPenCoords(1,3); // vy
-    omniTwistOmniPenCoords(2) = omniDeltaOmniPenCoords(2,3); // vz
-    omniTwistOmniPenCoords(3) = omniDeltaOmniPenCoords(2,1); // wx
-    omniTwistOmniPenCoords(4) = omniDeltaOmniPenCoords(0,2); // wy
-    omniTwistOmniPenCoords(5) = omniDeltaOmniPenCoords(1,0); // wz
+  RoboticsMath::Vector6d desTwist;
+  desTwist.head(3) = omniTwistOmniBaseCoords.head(3);
+  desTwist.tail(3) = omniTwistOmniPenCoords.tail(3);
 
-    RoboticsMath::Vector6d omniTwistOmniBaseCoords;
-    omniTwistOmniBaseCoords(0) = omniDeltaOmniBaseCoords(0,3);
-    omniTwistOmniBaseCoords(1) = omniDeltaOmniBaseCoords(1,3);
-    omniTwistOmniBaseCoords(2) = omniDeltaOmniBaseCoords(2,3);
-    omniTwistOmniBaseCoords(3) = omniDeltaOmniBaseCoords(2,1);
-    omniTwistOmniBaseCoords(4) = omniDeltaOmniBaseCoords(0,2);
-    omniTwistOmniBaseCoords(5) = omniDeltaOmniBaseCoords(1,0);
-
-    RoboticsMath::Vector6d desTwist;
-    desTwist.head(3) = omniTwistOmniBaseCoords.head(3);
-    desTwist.tail(3) = omniTwistOmniPenCoords.tail(3);
-
-    return desTwist;
+  return desTwist;
 }
 
-int main(int argc, char *argv[])
+endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
 {
+  //// Publish visualizations to rviz
 
-  // Main Loop structure
+  medlab::InterpRet robotBackbone = robot.GetInterpolatedBackbone();
 
-  // while (okay)
-  // nextState = stepState(curState);
-  // endwhile
+  int nPts = robot.GetNPts();
+  int nInterp = robot.GetNInterp();
+
+  for (int j=0; j<(nInterp+nPts); j++)
+  {
+    markersMsg.A1[j]=robotBackbone.p(0,j); // X,Y,Z
+    markersMsg.A2[j]=robotBackbone.p(1,j);
+    markersMsg.A3[j]=robotBackbone.p(2,j);
+    markersMsg.A4[j]=robotBackbone.q(0,j); // w,x,y,z
+    markersMsg.A5[j]=robotBackbone.q(1,j);
+    markersMsg.A6[j]=robotBackbone.q(2,j);
+    markersMsg.A7[j]=robotBackbone.q(3,j);
+
+    medlab::CTR3RobotParams robotParams = robot.GetCurRobotParams();
+    RoboticsMath::Vector6d robotCurQVec = robot.GetCurrQVec();
+    Eigen::Vector3d robotCurBeta = robotCurQVec.bottomRows(3);
+    if (robotCurBeta[1] > robotBackbone.s[j] ||
+        robotParams.L2+robotCurBeta[1] < robotBackbone.s[j])
+    {
+      markersMsg.A8[j] = 1; // green
+    }
+    else if ((robotCurBeta[1] <= robotBackbone.s[j] && robotCurBeta[2] > robotBackbone.s[j]) ||
+             (robotParams.L3 + robotCurBeta[2] < robotBackbone.s[j] && robotParams.L2 + robotCurBeta[1] >= robotBackbone.s[j]))
+    {
+      markersMsg.A8[j] = 2; // red
+    }
+    else
+    {
+      markersMsg.A8[j] = 3; // blue
+    }
+  }
+
+  return markersMsg;
+}
+
+medlab::CTR3RobotParams GetRobot1ParamsFromServer()
+{
+  // LOAD PARAMETER SERVER
+//  if (ros::param::has("/Endonasal_Teleop_Param_Server/"))
+//  {
+
+    double L1;
+    double L1Curved;
+    double OD1;
+    double ID1;
+    double E;
+    double k1r;
+    double PsiL1Home;
+    double Beta1Home;
+
+    double L2;
+    double L2Curved;
+    double OD2;
+    double ID2;
+    double k2r;
+    double PsiL2Home;
+    double Beta2Home;
 
   // --> INIT state
   //    --> at the end, segue to IDLE
@@ -203,48 +245,137 @@ int main(int argc, char *argv[])
   //    --> listen for trigger back to IDLE
   //
 
+    // PARSE ROBOT 1
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L1",L1);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L1Curved",L1Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/OD1",OD1);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/ID1",ID1);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/E",E);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/k1r",k1r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/PsiL1Home",PsiL1Home); // TODO: set qHome from these..
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/Beta1Home",Beta1Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/L2",L2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/L2Curved",L2Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/OD2",OD2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/ID2",ID2);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/k2r",k2r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/PsiL2Home",PsiL2Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube2/Beta2Home",Beta2Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/L3",L3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/L3Curvedt",L3Curved);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/OD3",OD3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/ID3",ID3);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/k3r",k3r);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/PsiL3Home",PsiL3Home);
+    ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube3/Beta3Home",Beta3Home);
+
+    std::cout << "OD3" << OD3 << std::endl;
+
+//    std::string::size_type stopString;
+    //char* stopString;
+//    double L1d = std::atof(L1.c_str());
+//    double L1d = std::strtod(L1.c_str(),0);
+//    std::cout << L1d << std::endl;
+//    double L1d = std::stod(L1.c_str(),NULL);
+//    double L1Curvedd = std::stod(L1Curved.c_str(),NULL);
+//    double OD1d = std::stod(OD1.c_str(),NULL);
+//    double ID1d = std::stod(ID1.c_str(),NULL);
+//    double Ed = std::stod(E.c_str(),NULL);
+//    double k1rd = std::stod(k1r.c_str(),NULL);
+//    double PsiL1Homed = std::stod(PsiL1Home.c_str(),NULL);
+//    double Beta1Homed = std::stod(Beta1Home.c_str(),NULL);
+
+//    double L2d = std::stod(L2.c_str(),NULL);
+//    double L2Curvedd = std::stod(L2Curved.c_str(),NULL);
+//    double OD2d = std::stod(OD2.c_str(),NULL);
+//    double ID2d = std::stod(ID2.c_str(),NULL);
+//    double k2rd = std::stod(k2r.c_str(),NULL);
+//    double PsiL2Homed = std::stod(PsiL2Home.c_str(),NULL);
+//    double Beta2Homed = std::stod(Beta2Home.c_str(),NULL);
+
+//    double L3d = std::stod(L3.c_str(),NULL);
+//    double L3Curvedd = std::stod(L3Curved.c_str(),NULL);
+//    double OD3d = std::stod(OD3.c_str(),NULL);
+//    double ID3d = std::stod(ID3.c_str(),NULL);
+//    double k3rd = std::stod(k3r.c_str(),NULL);
+//    double PsiL3Homed = std::stod(PsiL3Home.c_str(),NULL);
+//    double Beta3Homed = std::stod(Beta3Home.c_str(),NULL);
+
+    medlab::CTR3RobotParams robot1Params;
+//    robot1Params.L1 = L1d;
+//    robot1Params.Lt1 = L1d - L1Curvedd;
+//    robot1Params.OD1 = OD1d;
+//    robot1Params.ID1 = ID1d;
+//    robot1Params.E = Ed;
+//    robot1Params.k1 = 1.0/k1rd;
+//    robot1Params.L2 = L2d;
+//    robot1Params.Lt2 = L2d - L2Curvedd;
+//    robot1Params.OD2 = OD2d;
+//    robot1Params.ID2 = ID2d;
+//    robot1Params.k2 = 1.0/k2rd;
+//    robot1Params.L3 = L3d;
+//    robot1Params.Lt3 = L3d - L3Curvedd;
+//    robot1Params.OD3 = OD3d;
+//    robot1Params.ID3 = ID3d;
+//    robot1Params.k3 = 1.0/k3rd;
+
+//    std::cout << robot1Params.L1 << std::endl;
+
+    return robot1Params;
+//  }
+
+}
+
+int main(int argc, char *argv[])
+{
+  // ----------------- MAIN LOOP STRUCTURE -----------------
+
+      // while (okay)
+      // nextState = stepState(curState);
+      // endwhile
+
+      // --> INIT state
+      //    --> at the end, segue to IDLE
+      // --> IDLE State
+      //    --> listen for event triggers to SIM or ACTIVE
+      // --> ACTIVE State
+      //    --> enable motors and listen to input devices
+      //    --> listen for trigger back to IDLE
+      // --> SIM State
+      //    --> disable motors and listen to input devices
+      //    --> listen for trigger back to IDLE
+      //
 
 
+  // TODO: the code below should be run in the INIT STATE
   // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  //                                 TODO: initAllRobots() -- > happens in INIT state
-  // --> we set all of this stuff in there...
-
-  // Omni Registration Vars
-  Eigen::Matrix4d OmniReg = Eigen::Matrix4d::Identity();
-  Eigen::MatrixXd RotY = Eigen::AngleAxisd(M_PI,Eigen::Vector3d::UnitY()).toRotationMatrix();
-  Mtransform::SetRotation(OmniReg,RotY);
-  //Eigen::Matrix4d OmniRegInv = Mtransform::Inverse(OmniReg);
-  Eigen::Vector3d zeroVec;
-  zeroVec.fill(0);
+  // --------------------------------------------------------------------------------------- TODO: <initAllRobots()>
 
   // Start this ROS node on network
   ros::init(argc, argv, "endonasal_teleop");
   ros::NodeHandle node;
 
-  // -------------------------------------------------------------------------------
-  // <CTR3ROBOT 1 DEFINITION/>
-  // TODO: move into seperate functions => getParametersFromServer() & createCannula(robotNumber)
-  medlab::CTR3RobotParams robot1Params;
-  robot1Params.E = 60E9;
-  robot1Params.G = 60E9 / 2.0 / 1.33;
-  robot1Params.L1 = 222.5E-3;
-  robot1Params.Lt1 = robot1Params.L1 - 42.2E-3;
-  robot1Params.k1 = 1.0/63.5E-3;
-  robot1Params.OD1 = 1.165E-3;
-  robot1Params.ID1 = 1.067E-3;
-  robot1Params.L2 = 163E-3;
-  robot1Params.Lt2 = robot1Params.L2 - 38.0E-3;
-  robot1Params.k2 = 1.0/51.2E-3;
-  robot1Params.OD2 = 2.0574E-3;
-  robot1Params.ID2 = 1.6002E-3;
-  robot1Params.L3 = 104.4E-3;
-  robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
-  robot1Params.k3 = 1.0/71.4E-3;
-  robot1Params.OD3 = 2.540E-3;
-  robot1Params.ID3 = 2.248E-3;
+  // -------------------------------------------------------------------------- TODO: <getParamsFromServer()>
+  // <CTR3ROBOT 1 DEFINITION/> --------------------------------
+//  medlab::CTR3RobotParams robot1Params;
+//  robot1Params.E = 60E9;
+//  robot1Params.G = 60E9 / 2.0 / 1.33;
+//  robot1Params.L1 = 222.5E-3;
+//  robot1Params.Lt1 = robot1Params.L1 - 42.2E-3;
+//  robot1Params.k1 = 1.0/63.5E-3;
+//  robot1Params.OD1 = 1.165E-3;
+//  robot1Params.ID1 = 1.067E-3;
+//  robot1Params.L2 = 163E-3;
+//  robot1Params.Lt2 = robot1Params.L2 - 38.0E-3;
+//  robot1Params.k2 = 1.0/51.2E-3;
+//  robot1Params.OD2 = 2.0574E-3;
+//  robot1Params.ID2 = 1.6002E-3;
+//  robot1Params.L3 = 104.4E-3;
+//  robot1Params.Lt3 = robot1Params.L3 - 21.3E-3;
+//  robot1Params.k3 = 1.0/71.4E-3;
+//  robot1Params.OD3 = 2.540E-3;
+//  robot1Params.ID3 = 2.248E-3;
+  medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer(); // TODO: this doesn't work..but I think it's close
 
   typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
@@ -261,27 +392,45 @@ int main(int argc, char *argv[])
   // Assemble cannula
   auto cannula = std::make_tuple( T1, T2, T3 );
 
-  // -------------------------------------------------------------------------------
-  // </CTR3ROBOT 1 DEFINITION>
+  RoboticsMath::Vector6d robot1Home;
+  robot1Home << 3.0, 0.0, 0.0, -160.9E-3, -127.2E-3, -86.4E-3;
+
+  Eigen::Matrix4d robot1BaseFrame = Eigen::Matrix4d::Identity();
+  robot1BaseFrame(0,3) = 10.0E-3;
+  // </CTR3ROBOT 1 DEFINITION> ---------------------------------
+
+
+//  // <CTR3ROBOT 2 DEFINITION> ----------------------------------
+//  Eigen::Matrix4d robot2BaseFrame = Eigen::Matrix4d::Identity();
+//  robot2BaseFrame(0,3) = -10.0E-3;
+//  // </CTR3ROBOT 2 DEFINITION> ---------------------------------
+
+
+//  // <CTR3ROBOT 3 DEFINITION> ----------------------------------
+//  Eigen::Matrix4d robot3BaseFrame = Eigen::Matrix4d::Identity();
+//  robot3BaseFrame(0,2) = -10.0E-3;
+//  // </CTR3ROBOT 3 DEFINITION> ---------------------------------
 
 
   // Initialize robot with controller
-  // robot1Params = getParametersFromServer(1);
-  // ResolvedRatesController rr1(createCannula(robot1Params),robot1Params);
-  ResolvedRatesController rr1(cannula,robot1Params);
+  ResolvedRatesController rr1(cannula,robot1Params,robot1Home,robot1BaseFrame);
   rr1.init();
 
-  // -------------------------------------------------------------------------------
-  //        std::cout << "pTip" << robot1.currKinematics.Ptip << std::endl << std::endl;
-  //        std::cout << "qTip" << robot1.currKinematics.Qtip << std::endl << std::endl;
-  //        std::cout << "Stability" << robot1.currKinematics.Stability << std::endl << std::endl;
-  //        std::cout << "Jtip" << robot1.currKinematics.Jtip << std::endl << std::endl;
+//  ResolvedRatesController rr2(cannula,robot1Params,robot1Home,robot2BaseFrame);
+//  rr2.init();
+
+//  ResolvedRatesController rr3(cannula,robot1Params,robot1Home,robot3BaseFrame);
+//  rr3.init();
 
   //        McbRos* motorBoard1;
   //        std::string motorBoard1NodeName = ui_.lineEdit_nodeName->text().toStdString();
   //        motorBoard1->init(motorBoard1NodeName);
 
-  // -------------------------------------------------------------------------------
+  // ------------------------------------------------------------------</getParamsFromServer()>
+  // ---------------------------------------------------------------------------------------
+  // --------------------------------------------------------------------------------------- </initAllRobots()>
+
+
   // SUBSCRIBERS
   ros::Subscriber omniButtonSub = node.subscribe("Buttonstates", 1, omniButtonCallback);
   ros::Subscriber omniPoseSub = node.subscribe("Omnipos", 1, omniCallback);
@@ -290,35 +439,21 @@ int main(int argc, char *argv[])
   ros::Publisher needle_pub = node.advertise<endonasal_teleop::matrix8>("needle_position",10);
   ros::Publisher pubEncoderCommand1 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB1/encoder_command", 1); // EC13
   ros::Publisher pubEncoderCommand2 = node.advertise<medlab_motor_control_board::McbEncoders>("MCB4/encoder_command", 1); // EC16
-  //clients
+
   // ROS RATE
   ros::Rate r(rosLoopRate);
-
-
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------------------
-
-
 
   while (ros::ok())
   {
 
-    // TODO: setup initAllRobots() in here..
-    // This is where the state machine lives
-    // Init will pull from parameter server in here
+//    std::cout << robot1Params.ID1 << std::endl;
+//    std::cout << robot1Params.OD1 << std::endl;
 
+    // -------------------- FOR A GIVEN ACTIVE OMNI/RRC:-------------------------------
 
+    // TODO: need to link an omni device to an instance of ResolvedRatesController (rr.SetInputDevice())
     // All of this will be in either SIM or ACTIVE states
-    curOmni = omniPose;
-    pTip = pTipCur;
-    qTip = qTipCur;
-    qBishop = qBishopCur;
-    alpha = alphaCur;
-    Rtip = RoboticsMath::quat2rotm(qTip);
-    RBishop = RoboticsMath::quat2rotm(qBishop);
-    robotTipFrame = RoboticsMath::assembleTransformation(Rtip,pTip);
+    curOmni = omniPose; // Omni Update
 
     if (buttonState == 1)   // while clutched in
     {
@@ -330,61 +465,28 @@ int main(int argc, char *argv[])
 
       if (justClutched == true) // Set reference to this first frame
       {
-        omniFrameAtClutch = omniPose;
         prevOmni = omniPose;
-        Tregs = RoboticsMath::assembleTransformation(RBishop.transpose(),zeroVec); // TODO: need to make sure this gets updated
         justClutched = false;
       }
 
-      Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
-
       RoboticsMath::Vector6d desTwist;
-      desTwist = InputDeviceTwist(omniDeltaOmniPenCoords);
+      desTwist = InputDeviceTwistUpdate();
       RoboticsMath::Vector6d newQ;
       newQ = rr1.step(desTwist);
       prevOmni = curOmni;
 
-      // TODO: send out joint commands
+      // TODO: update vizualization if in ACTIVE or SIM STATES
+      // TODO: write to motors if in ACTIVE STATE
+
 
     }
 
-    //// Publish visualizations to rviz
+    // TODO: this is slow, need to implement only update if new kinematics
+    // TODO: we should have one large message with all markers for all robots?
 
-    CTR3Robot robot1 = rr1.GetRobot();
-    medlab::InterpRet robot1Backbone = robot1.GetInterpolatedBackbone();
+    needle_pub.publish(GenerateRobotVisualizationMarkers(rr1.GetRobot())); // TODO: need to still publish non-active robots
 
-    int nPts = robot1.GetNPts();
-    int nInterp = robot1.GetNInterp();
-
-    for (int j=0; j<(nInterp+nPts); j++)
-    {
-      markersMsg.A1[j]=robot1Backbone.p(0,j); // X
-      markersMsg.A2[j]=robot1Backbone.p(1,j); // Y
-      markersMsg.A3[j]=robot1Backbone.p(2,j); // Z
-      markersMsg.A4[j]=robot1Backbone.q(0,j); // w
-      markersMsg.A5[j]=robot1Backbone.q(1,j); // x
-      markersMsg.A6[j]=robot1Backbone.q(2,j); // y
-      markersMsg.A7[j]=robot1Backbone.q(3,j); // z
-
-      RoboticsMath::Vector6d robot1CurQVec = robot1.GetCurrQVec();
-      Eigen::Vector3d robot1CurBeta = robot1CurQVec.bottomRows(3);
-      if (robot1CurBeta[1] > robot1Backbone.s[j] ||
-          robot1Params.L2+robot1CurBeta[1] < robot1Backbone.s[j])
-      {
-        markersMsg.A8[j] = 1; // green
-      }
-      else if ((robot1CurBeta[1] <= robot1Backbone.s[j] && robot1CurBeta[2] > robot1Backbone.s[j]) ||
-               (robot1Params.L3 + robot1CurBeta[2] < robot1Backbone.s[j] && robot1Params.L2 + robot1CurBeta[1] >= robot1Backbone.s[j]))
-      {
-        markersMsg.A8[j] = 2; // red
-      }
-      else
-      {
-        markersMsg.A8[j] = 3; // blue
-      }
-    }
-
-    needle_pub.publish(markersMsg);
+    // ---------------------------------------------------------------------------------
 
     // sleep
     ros::spinOnce();

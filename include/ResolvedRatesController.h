@@ -17,11 +17,11 @@ public:
     T3_BACK, T3_FRONT //TODO: implement these
   };
 
-  ResolvedRatesController(medlab::Cannula3 cannula,medlab::CTR3RobotParams params);  // setup
+  ResolvedRatesController(medlab::Cannula3 cannula,medlab::CTR3RobotParams params,
+                          RoboticsMath::Vector6d qHome, Eigen::Matrix4d baseFrame);  // setup
   ~ResolvedRatesController();
-  void init();		// go online
- /* RoboticsMath::Matrix6d step(SomeData::Type desiredTwist);*/ // output of this should be joint positions [alpha, beta]
-  RoboticsMath::Vector6d step(RoboticsMath::Vector6d desTwist);
+  void init();
+  RoboticsMath::Vector6d step(RoboticsMath::Vector6d desTwist); // online loop
   bool SetTrackingGain(double LambdaTracking);
   bool SetDampingGain(double LambdaDamping);
   bool SetJointLimitsGain(double LambdaJL);
