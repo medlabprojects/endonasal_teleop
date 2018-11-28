@@ -18,6 +18,7 @@
 // Qt headers
 #include <QCoreApplication>
 #include <QVector>
+#include <QString>
 
 // Cannula kinematics headers
 //#include <Kinematics.h>
@@ -92,23 +93,28 @@ Eigen::Vector4d qTipCur;
 Eigen::Vector4d qBishopCur;
 Eigen::Vector3d alphaCur;
 
+Eigen::Matrix4d curOmni;
+Eigen::Matrix4d prevOmni;
+Eigen::Matrix4d omniPose;
+double omniScaleFactor;
+
 // TODO: omni message has been reformatted to stream Matrix4d & button msgs -> modify to read this in
 geometry_msgs::Pose tempMsg;
 void omniCallback(const geometry_msgs::Pose &msg) // TODO: refactor this to not use tempMsg...
 {
-	tempMsg = msg;
+//	tempMsg = msg;
 
-	Eigen::Vector4d qOmni;
-	qOmni << tempMsg.orientation.w, tempMsg.orientation.x, tempMsg.orientation.y, tempMsg.orientation.z;
-        Eigen::Matrix3d ROmni = RoboticsMath::quat2rotm(qOmni);
+//	Eigen::Vector4d qOmni;
+//	qOmni << tempMsg.orientation.w, tempMsg.orientation.x, tempMsg.orientation.y, tempMsg.orientation.z;
+//        Eigen::Matrix3d ROmni = RoboticsMath::quat2rotm(qOmni);
 
-	Eigen::Vector3d pOmni;
-	pOmni << tempMsg.position.x, tempMsg.position.y, tempMsg.position.z;
+//	Eigen::Vector3d pOmni;
+//	pOmni << tempMsg.position.x, tempMsg.position.y, tempMsg.position.z;
 
-	omniPose.fill(0);
-	omniPose.topLeftCorner(3, 3) = ROmni;
-	omniPose.topRightCorner(3, 1) = pOmni;
-	omniPose(3, 3) = 1.0;
+//	omniPose.fill(0);
+//	omniPose.topLeftCorner(3, 3) = ROmni;
+//	omniPose.topRightCorner(3, 1) = pOmni;
+//	omniPose(3, 3) = 1.0;
 
 }
 
@@ -129,44 +135,47 @@ void omniButtonCallback(const std_msgs::Int8 &buttonMsg)
 // ::setInputDeviceTransform(Matrix4d transform)
 // Vector6d ResolvedRates::transformInputDeviceTwist(Eigen::Matrix4d inputDeviceCoords){return RoboticsMath::Vector6d::Zero()};
 //RoboticsMath::Vector6d ResolvedRates::InputDeviceTwist(Eigen::Matrix4d omniDeltaOmniPenCoords)
-RoboticsMath::Vector6d InputDeviceTwistUpdate()
-{
-  // This uses the global curOmni and prevOmni vars to update desTwist
-  Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
+//RoboticsMath::Vector6d PhantomOmniRos::InputDeviceTwistUpdate()
+//{
+//  // This uses the global curOmni and prevOmni vars to update desTwist
+//  Eigen::Matrix4d omniDeltaOmniPenCoords = Mtransform::Inverse(prevOmni)*curOmni;
 
-  omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
-  omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
-  Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
-  Eigen::Matrix4d omniDeltaOmniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDeltaOmniPenCoords*RPrevOmni.transpose());
+//  Eigen::Vector3d zeroVec;
+//  zeroVec.fill(0);
 
-  Eigen::Matrix3d Rd = curOmni.block<3,3>(0,0);
-  Eigen::Matrix3d Rc = prevOmni.block<3,3>(0,0);
-  Eigen::Matrix3d Re = Rd*Rc.transpose();
-  Re = RoboticsMath::orthonormalize(Re);
+//  omniDeltaOmniPenCoords.block(0,3,3,1) = omniDeltaOmniPenCoords/1.0E3;
+//  omniDeltaOmniPenCoords.block(0,3,3,1) = omniScaleFactor*omniDeltaOmniPenCoords.block(0,3,3,1);
+//  Eigen::Matrix4d RPrevOmni = RoboticsMath::assembleTransformation(prevOmni.block(0,0,3,3),zeroVec);
+//  Eigen::Matrix4d omniDeltaOmniBaseCoords = (Mtransform::Inverse(RPrevOmni.transpose())*omniDeltaOmniPenCoords*RPrevOmni.transpose());
 
-  // desTwist should use OmniBaseCoords for linar velocity, and OmniPenCoords for angular velocity
-  RoboticsMath::Vector6d omniTwistOmniPenCoords;
-  omniTwistOmniPenCoords(0) = omniDeltaOmniPenCoords(0,3); // vx
-  omniTwistOmniPenCoords(1) = omniDeltaOmniPenCoords(1,3); // vy
-  omniTwistOmniPenCoords(2) = omniDeltaOmniPenCoords(2,3); // vz
-  omniTwistOmniPenCoords(3) = omniDeltaOmniPenCoords(2,1); // wx
-  omniTwistOmniPenCoords(4) = omniDeltaOmniPenCoords(0,2); // wy
-  omniTwistOmniPenCoords(5) = omniDeltaOmniPenCoords(1,0); // wz
+//  Eigen::Matrix3d Rd = curOmni.block<3,3>(0,0);
+//  Eigen::Matrix3d Rc = prevOmni.block<3,3>(0,0);
+//  Eigen::Matrix3d Re = Rd*Rc.transpose();
+//  Re = RoboticsMath::orthonormalize(Re);
 
-  RoboticsMath::Vector6d omniTwistOmniBaseCoords;
-  omniTwistOmniBaseCoords(0) = omniDeltaOmniBaseCoords(0,3);
-  omniTwistOmniBaseCoords(1) = omniDeltaOmniBaseCoords(1,3);
-  omniTwistOmniBaseCoords(2) = omniDeltaOmniBaseCoords(2,3);
-  omniTwistOmniBaseCoords(3) = omniDeltaOmniBaseCoords(2,1);
-  omniTwistOmniBaseCoords(4) = omniDeltaOmniBaseCoords(0,2);
-  omniTwistOmniBaseCoords(5) = omniDeltaOmniBaseCoords(1,0);
+//  // desTwist should use OmniBaseCoords for linar velocity, and OmniPenCoords for angular velocity
+//  RoboticsMath::Vector6d omniTwistOmniPenCoords;
+//  omniTwistOmniPenCoords(0) = omniDeltaOmniPenCoords(0,3); // vx
+//  omniTwistOmniPenCoords(1) = omniDeltaOmniPenCoords(1,3); // vy
+//  omniTwistOmniPenCoords(2) = omniDeltaOmniPenCoords(2,3); // vz
+//  omniTwistOmniPenCoords(3) = omniDeltaOmniPenCoords(2,1); // wx
+//  omniTwistOmniPenCoords(4) = omniDeltaOmniPenCoords(0,2); // wy
+//  omniTwistOmniPenCoords(5) = omniDeltaOmniPenCoords(1,0); // wz
 
-  RoboticsMath::Vector6d desTwist;
-  desTwist.head(3) = omniTwistOmniBaseCoords.head(3);
-  desTwist.tail(3) = omniTwistOmniPenCoords.tail(3);
+//  RoboticsMath::Vector6d omniTwistOmniBaseCoords;
+//  omniTwistOmniBaseCoords(0) = omniDeltaOmniBaseCoords(0,3);
+//  omniTwistOmniBaseCoords(1) = omniDeltaOmniBaseCoords(1,3);
+//  omniTwistOmniBaseCoords(2) = omniDeltaOmniBaseCoords(2,3);
+//  omniTwistOmniBaseCoords(3) = omniDeltaOmniBaseCoords(2,1);
+//  omniTwistOmniBaseCoords(4) = omniDeltaOmniBaseCoords(0,2);
+//  omniTwistOmniBaseCoords(5) = omniDeltaOmniBaseCoords(1,0);
 
-  return desTwist;
-}
+//  RoboticsMath::Vector6d desTwist;
+//  desTwist.head(3) = omniTwistOmniBaseCoords.head(3);
+//  desTwist.tail(3) = omniTwistOmniPenCoords.tail(3);
+
+//  return desTwist;
+//}
 
 endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
 {
@@ -209,11 +218,8 @@ endonasal_teleop::matrix8 GenerateRobotVisualizationMarkers(CTR3Robot robot)
   return markersMsg;
 }
 
-medlab::CTR3RobotParams GetRobot1ParamsFromServer()
+medlab::CTR3RobotParams GetRobot1ParamsFromServer(QString robotNamespace)
 {
-  // LOAD PARAMETER SERVER
-//  if (ros::param::has("/Endonasal_Teleop_Param_Server/"))
-//  {
 
     double L1;
     double L1Curved;
@@ -232,18 +238,13 @@ medlab::CTR3RobotParams GetRobot1ParamsFromServer()
     double PsiL2Home;
     double Beta2Home;
 
-  // --> INIT state
-  //    --> at the end, segue to IDLE
-  // --> IDLE State
-  //    --> listen for event triggers to SIM or ACTIVE
-  //    --> user can change RR gains
-  // --> ACTIVE State
-  //    --> enable motors and listen to input devices
-  //    --> listen for trigger back to IDLE
-  // --> SIM State
-  //    --> disable motors and listen to input devices
-  //    --> listen for trigger back to IDLE
-  //
+    double L3;
+    double L3Curved;
+    double OD3;
+    double ID3;
+    double k3r;
+    double PsiL3Home;
+    double Beta3Home;
 
     // PARSE ROBOT 1
     ros::param::get("/Endonasal_Teleop_Param_Server/R1Tube1/L1",L1);
@@ -271,55 +272,9 @@ medlab::CTR3RobotParams GetRobot1ParamsFromServer()
 
     std::cout << "OD3" << OD3 << std::endl;
 
-//    std::string::size_type stopString;
-    //char* stopString;
-//    double L1d = std::atof(L1.c_str());
-//    double L1d = std::strtod(L1.c_str(),0);
-//    std::cout << L1d << std::endl;
-//    double L1d = std::stod(L1.c_str(),NULL);
-//    double L1Curvedd = std::stod(L1Curved.c_str(),NULL);
-//    double OD1d = std::stod(OD1.c_str(),NULL);
-//    double ID1d = std::stod(ID1.c_str(),NULL);
-//    double Ed = std::stod(E.c_str(),NULL);
-//    double k1rd = std::stod(k1r.c_str(),NULL);
-//    double PsiL1Homed = std::stod(PsiL1Home.c_str(),NULL);
-//    double Beta1Homed = std::stod(Beta1Home.c_str(),NULL);
-
-//    double L2d = std::stod(L2.c_str(),NULL);
-//    double L2Curvedd = std::stod(L2Curved.c_str(),NULL);
-//    double OD2d = std::stod(OD2.c_str(),NULL);
-//    double ID2d = std::stod(ID2.c_str(),NULL);
-//    double k2rd = std::stod(k2r.c_str(),NULL);
-//    double PsiL2Homed = std::stod(PsiL2Home.c_str(),NULL);
-//    double Beta2Homed = std::stod(Beta2Home.c_str(),NULL);
-
-//    double L3d = std::stod(L3.c_str(),NULL);
-//    double L3Curvedd = std::stod(L3Curved.c_str(),NULL);
-//    double OD3d = std::stod(OD3.c_str(),NULL);
-//    double ID3d = std::stod(ID3.c_str(),NULL);
-//    double k3rd = std::stod(k3r.c_str(),NULL);
-//    double PsiL3Homed = std::stod(PsiL3Home.c_str(),NULL);
-//    double Beta3Homed = std::stod(Beta3Home.c_str(),NULL);
-
+    // TODO: set robot1Params
     medlab::CTR3RobotParams robot1Params;
-//    robot1Params.L1 = L1d;
-//    robot1Params.Lt1 = L1d - L1Curvedd;
-//    robot1Params.OD1 = OD1d;
-//    robot1Params.ID1 = ID1d;
-//    robot1Params.E = Ed;
-//    robot1Params.k1 = 1.0/k1rd;
-//    robot1Params.L2 = L2d;
-//    robot1Params.Lt2 = L2d - L2Curvedd;
-//    robot1Params.OD2 = OD2d;
-//    robot1Params.ID2 = ID2d;
-//    robot1Params.k2 = 1.0/k2rd;
-//    robot1Params.L3 = L3d;
-//    robot1Params.Lt3 = L3d - L3Curvedd;
-//    robot1Params.OD3 = OD3d;
-//    robot1Params.ID3 = ID3d;
-//    robot1Params.k3 = 1.0/k3rd;
 
-//    std::cout << robot1Params.L1 << std::endl;
 
     return robot1Params;
 //  }
@@ -375,7 +330,7 @@ int main(int argc, char *argv[])
 //  robot1Params.k3 = 1.0/71.4E-3;
 //  robot1Params.OD3 = 2.540E-3;
 //  robot1Params.ID3 = 2.248E-3;
-  medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer(); // TODO: this doesn't work..but I think it's close
+  medlab::CTR3RobotParams robot1Params = GetRobot1ParamsFromServer(QString("Robot1NameSpace")); // TODO: this doesn't work..but I think it's close
 
   typedef CTR::Tube< CTR::Functions::constant_fun< CTR::Vector<2>::type> >  TubeType;
 
@@ -398,18 +353,6 @@ int main(int argc, char *argv[])
   Eigen::Matrix4d robot1BaseFrame = Eigen::Matrix4d::Identity();
   robot1BaseFrame(0,3) = 10.0E-3;
   // </CTR3ROBOT 1 DEFINITION> ---------------------------------
-
-
-//  // <CTR3ROBOT 2 DEFINITION> ----------------------------------
-//  Eigen::Matrix4d robot2BaseFrame = Eigen::Matrix4d::Identity();
-//  robot2BaseFrame(0,3) = -10.0E-3;
-//  // </CTR3ROBOT 2 DEFINITION> ---------------------------------
-
-
-//  // <CTR3ROBOT 3 DEFINITION> ----------------------------------
-//  Eigen::Matrix4d robot3BaseFrame = Eigen::Matrix4d::Identity();
-//  robot3BaseFrame(0,2) = -10.0E-3;
-//  // </CTR3ROBOT 3 DEFINITION> ---------------------------------
 
 
   // Initialize robot with controller

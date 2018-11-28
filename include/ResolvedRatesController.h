@@ -1,9 +1,13 @@
 #pragma once
+#include <QObject>
 #include "CTR3Robot.h"
 #include "RoboticsMath.h"
+#include "PhantomOmniRos.h"
 #include <vector>
 
-class ResolvedRatesController {
+class ResolvedRatesController : public QObject
+{
+  Q_OBJECT
 
 public:
 
@@ -21,14 +25,13 @@ public:
                           RoboticsMath::Vector6d qHome, Eigen::Matrix4d baseFrame);  // setup
   ~ResolvedRatesController();
   void init();
-  RoboticsMath::Vector6d step(RoboticsMath::Vector6d desTwist); // online loop
   bool SetTrackingGain(double LambdaTracking);
   bool SetDampingGain(double LambdaDamping);
   bool SetJointLimitsGain(double LambdaJL);
-  bool SetCurInputDevice();
-  //bool SetInputDeviceTransform(Matrix4d TRegistration); //TODO: all preprocessing of input device twist should be done outside of this class
   std::vector<ResolvedRatesController::LIMIT_FLAG> GetLimitFlags(){return currentLimitFlags_;} //TODO: implement this
   CTR3Robot GetRobot();
+public slots:
+  RoboticsMath::Vector6d step(RoboticsMath::Vector6d desTwist); // online loop
 
 private:
   CTR3Robot robot_;

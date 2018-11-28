@@ -1,0 +1,53 @@
+EndonasalRobot/
+							/MCB/
+			 						/NumberOfBoards
+									/1/
+										/NodeName
+
+							/Arm1/
+							 		 /Description
+									 /Location/
+													 /Slot/(Left/Right/Bottom)
+													 /BaseFrame
+									/Tool/
+											 /Name
+											 /GearRatio
+							 				 /Motor/...
+									/NumberOfTubes
+									/Tube1/
+												/L
+												/OD
+												/ID
+												/Rotation/
+																 /GearRatio
+																 /Motor/
+																			 /MotherIndex
+																			 /DaughterIndex
+																			 /
+																			 /Gains/
+																						 /P
+																						 /I
+																						 /D
+												/Translation/
+																		/GearRatio
+																		/Motor/
+																					/MotherIndex
+																					/DaughterIndex
+																					/Gains/
+																								/P
+																								/I
+																								/D
+											
+									/Tube2/
+									...
+									/Tube3/
+									...
+		
+		
+							...
+
+							/Arm2/
+							...
+
+
+

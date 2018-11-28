@@ -55,7 +55,7 @@ RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desT
 
   medlab::KinOut kin = robot_.currKinematics;
 
-  RoboticsMath::Matrix6d Jbody = kin.Jtip;
+  RoboticsMath::Matrix6d Jbody = kin.Jtip; //TODO: this needs to be transformed
 
   Eigen::Vector3d posError = desTwist.topRows<3>();
   if (posError.norm() > convergeRadius_)
@@ -74,7 +74,7 @@ RoboticsMath::Vector6d ResolvedRatesController::step(RoboticsMath::Vector6d desT
 
   RR.topLeftCorner<3,3>() = RBishop;
   RR.bottomRightCorner<3,3>() = RBishop;
-  RoboticsMath::Matrix6d Jh = RR*Jbody;
+  RoboticsMath::Matrix6d Jh = RR*Jbody; //TODO: this needs to be Jbody, but transformed by baseFrame
 
   RoboticsMath::Matrix6d Jmix;
   Jmix.block(0,0,3,6) = Jh.block(0,0,3,6);

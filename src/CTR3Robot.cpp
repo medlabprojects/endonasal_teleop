@@ -10,9 +10,9 @@ CTR3Robot::CTR3Robot(medlab::Cannula3 cannula, medlab::CTR3RobotParams params,
   cannula_(cannula),
   currCannulaParams_(params),
   qHome_(qHome),
-  BaseFrame_WORLD(baseFrame)
+  BaseFrame_WORLD(baseFrame),
+  nInterp_(200)
 {
-  nInterp_ = 200; // Default number of interp points
 }
 
 bool CTR3Robot::init()
@@ -65,7 +65,7 @@ medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsIn
   auto ret1 = CTR::Kinematics_with_dense_output(cannula_, newKinematicsInput, medlab::OType());
 
   RoboticsMath::Matrix6d J;
-  J = CTR::GetTipJacobianForTube1(ret1.y_final);
+  J = CTR::GetTipJacobianForTube1(ret1.y_final); //TODO: transform J by the base frame
 
   double Stability;
   Stability = CTR::GetStability(ret1.y_final);
@@ -94,7 +94,7 @@ medlab::KinOut CTR3Robot::callKinematicsWithDenseOutput(medlab::CTR3KinematicsIn
   Eigen::Vector4d qTip;
 
 
-  pTip = ret1.pTip;
+  pTip = ret1.pTip; //TODO: this needs to use posedata
   qBishop = ret1.qTip;
   RBishop = RoboticsMath::quat2rotm(qBishop);
   Eigen::Matrix3d rotate_psiL = Eigen::Matrix3d::Identity();

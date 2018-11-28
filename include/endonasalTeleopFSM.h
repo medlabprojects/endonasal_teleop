@@ -2,6 +2,7 @@
 
 #include <QVector>
 #include "ResolvedRatesController.h"
+#include "PhantomOmniRos.h"
 
 // Finite State Machine
 enum class TeleopState {INIT, IDLE, ACTIVE, SIMULATION, ERROR};
@@ -30,9 +31,5 @@ TeleopState transitionFromSimulationState(void);
 
 
 // ROS
-
-
-// Resolved Rates Controllers
-QVector<ResolvedRatesController> controllers;
 
 // Callbacks
